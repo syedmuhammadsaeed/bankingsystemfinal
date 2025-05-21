@@ -31,6 +31,7 @@ public class CustomerDashboardUI extends JFrame {
     private JButton actionButton;
     private JPanel bottomPanel;
     private JPanel transactionPanel;
+    private JPanel loanPanel; // New panel for loan export button
     private String currentTab = "Accounts";
 
     public CustomerDashboardUI(CustomerDashboard dashboard) {
@@ -150,21 +151,39 @@ public class CustomerDashboardUI extends JFrame {
 
         // Transaction-specific panel for Export button
         transactionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton exportButton = new JButton("Export to PDF");
-        exportButton.setBackground(new Color(25, 118, 210));
-        exportButton.setForeground(Color.WHITE);
-        exportButton.setFocusPainted(false);
-        exportButton.addActionListener(new ActionListener() {
+        JButton exportTransactionButton = new JButton("Export to PDF");
+        exportTransactionButton.setBackground(new Color(25, 118, 210));
+        exportTransactionButton.setForeground(Color.WHITE);
+        exportTransactionButton.setFocusPainted(false);
+        exportTransactionButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 exportTransactionsToPDF();
             }
         });
-        transactionPanel.add(exportButton);
+        transactionPanel.add(exportTransactionButton);
         transactionPanel.setVisible(false);
 
+        // Loan-specific panel for Export button
+        loanPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton exportLoanButton = new JButton("Export to PDF");
+        exportLoanButton.setBackground(new Color(25, 118, 210));
+        exportLoanButton.setForeground(Color.WHITE);
+        exportLoanButton.setFocusPainted(false);
+        exportLoanButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                exportLoansToPDF();
+            }
+        });
+        loanPanel.add(exportLoanButton);
+        loanPanel.setVisible(false);
+
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.add(transactionPanel, BorderLayout.NORTH);
+        topPanel.add(loanPanel, BorderLayout.SOUTH);
+        mainPanel.add(topPanel, BorderLayout.NORTH);
         mainPanel.add(bottomPanel, BorderLayout.SOUTH);
-        mainPanel.add(transactionPanel, BorderLayout.NORTH);
 
         // Action Listeners
         actionButton.addActionListener(new ActionListener() {
@@ -225,6 +244,7 @@ public class CustomerDashboardUI extends JFrame {
         tableModel.setRowCount(0); // Clear existing rows
         bottomPanel.setVisible(true); // Show bottom panel by default
         transactionPanel.setVisible(false); // Hide transaction panel by default
+        loanPanel.setVisible(false); // Hide loan panel by default
 
         switch (tab) {
             case "Accounts":
@@ -289,6 +309,7 @@ public class CustomerDashboardUI extends JFrame {
                 accountIdToLabel.setVisible(false);
                 accountIdToField.setVisible(false);
                 actionButton.setText("Request Loan");
+                loanPanel.setVisible(true); // Show export button for Loan Request
                 break;
 
             case "Transfer":
@@ -368,6 +389,43 @@ public class CustomerDashboardUI extends JFrame {
                     table.addCell(String.valueOf(transaction.getAmount()));
                     table.addCell(transaction.getTimestamp());
                     table.addCell(transaction.getStatus());
+                }
+
+                document.add(table);
+                JOptionPane.showMessageDialog(this, "PDF exported successfully to " + file.getAbsolutePath(), "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Error exporting PDF: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void exportLoansToPDF() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setSelectedFile(new java.io.File("Loan_Details_" + customerId + "_" + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".pdf"));
+        int result = fileChooser.showSaveDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            java.io.File file = fileChooser.getSelectedFile();
+            try (FileOutputStream fos = new FileOutputStream(file);
+                 PdfWriter writer = new PdfWriter(fos);
+                 PdfDocument pdf = new PdfDocument(writer);
+                 Document document = new Document(pdf)) {
+
+                document.add(new Paragraph("Loan Details for Customer ID: " + customerId));
+                document.add(new Paragraph("Date: " + java.time.LocalDateTime.now()));
+
+                Table table = new Table(5);
+                table.addCell("Account ID");
+                table.addCell("Amount");
+                table.addCell("Loan Type");
+                table.addCell("Applied Date");
+                table.addCell("Status");
+
+                for (Loan.LoanRecord loan : dashboard.getLoanRequests()) {
+                    table.addCell(String.valueOf(loan.getAccountId()));
+                    table.addCell(String.format("%.2f", loan.getAmount()));
+                    table.addCell(loan.getLoanType());
+                    table.addCell(loan.getAppliedDate());
+                    table.addCell(loan.getStatus());
                 }
 
                 document.add(table);

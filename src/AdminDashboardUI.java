@@ -20,7 +20,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 public class AdminDashboardUI extends JFrame {
-    private bankingsystemfinal.AdminDashboard adminDashboard;
+    private bankingsystemfinal.AdminDashboard adminDashboard; // Fixed declaration
     private JPanel contentPanel;
     private CardLayout cardLayout;
     private JTable depositTable;
@@ -128,13 +128,13 @@ public class AdminDashboardUI extends JFrame {
         transactionPanel.add(transactionScroll, BorderLayout.CENTER);
 
         // Add Export Button (Smaller Size)
-        JButton exportButton = new JButton("Export to PDF");
-        exportButton.setBackground(new Color(25, 118, 210));
-        exportButton.setForeground(Color.WHITE);
-        exportButton.setFocusPainted(false);
-        exportButton.setPreferredSize(new Dimension(120, 30)); // Smaller size
-        exportButton.addActionListener(e -> exportTransactionHistoryToPDF());
-        transactionPanel.add(exportButton, BorderLayout.SOUTH);
+        JButton exportTransactionButton = new JButton("Export to PDF");
+        exportTransactionButton.setBackground(new Color(25, 118, 210));
+        exportTransactionButton.setForeground(Color.WHITE);
+        exportTransactionButton.setFocusPainted(false);
+        exportTransactionButton.setPreferredSize(new Dimension(120, 30)); // Smaller size
+        exportTransactionButton.addActionListener(e -> exportTransactionHistoryToPDF());
+        transactionPanel.add(exportTransactionButton, BorderLayout.SOUTH);
 
         updateTransactionTable(transactionTable);
         contentPanel.add(transactionPanel, "Transaction History");
@@ -176,6 +176,16 @@ public class AdminDashboardUI extends JFrame {
         loanTable.getColumn("Action").setCellEditor(new LoanButtonEditor(loanTable));
         JScrollPane loanScroll = new JScrollPane(loanTable);
         loanPanel.add(loanScroll, BorderLayout.CENTER);
+
+        // Add Export Button for Loans (Smaller Size)
+        JButton exportLoanButton = new JButton("Export to PDF");
+        exportLoanButton.setBackground(new Color(25, 118, 210));
+        exportLoanButton.setForeground(Color.WHITE);
+        exportLoanButton.setFocusPainted(false);
+        exportLoanButton.setPreferredSize(new Dimension(120, 30)); // Smaller size
+        exportLoanButton.addActionListener(e -> exportLoanRequestsToPDF());
+        loanPanel.add(exportLoanButton, BorderLayout.SOUTH);
+
         updateLoanTable(loanTable);
         contentPanel.add(loanPanel, "Loan Requests");
 
@@ -393,6 +403,43 @@ public class AdminDashboardUI extends JFrame {
                     table.addCell(String.format("%.2f", transaction.getAmount()));
                     table.addCell(transaction.getTimestamp());
                     table.addCell(transaction.getStatus());
+                }
+
+                document.add(table);
+                JOptionPane.showMessageDialog(this, "PDF exported successfully to " + file.getAbsolutePath(), "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Error exporting PDF: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void exportLoanRequestsToPDF() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setSelectedFile(new java.io.File("Loan_Requests_" + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".pdf"));
+        int result = fileChooser.showSaveDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            java.io.File file = fileChooser.getSelectedFile();
+            try (FileOutputStream fos = new FileOutputStream(file);
+                 PdfWriter writer = new PdfWriter(fos);
+                 PdfDocument pdf = new PdfDocument(writer);
+                 Document document = new Document(pdf)) {
+
+                document.add(new Paragraph("Loan Requests"));
+                document.add(new Paragraph("Date: " + java.time.LocalDateTime.now()));
+
+                Table table = new Table(5); // 5 columns excluding the "Action" column
+                table.addCell("Account ID");
+                table.addCell("Amount");
+                table.addCell("Loan Type");
+                table.addCell("Applied Date");
+                table.addCell("Status");
+
+                for (bankingsystemfinal.Loan.LoanRecord loan : adminDashboard.getLoanRequests()) {
+                    table.addCell(String.valueOf(loan.getAccountId()));
+                    table.addCell(String.format("%.2f", loan.getAmount()));
+                    table.addCell(loan.getLoanType());
+                    table.addCell(loan.getAppliedDate());
+                    table.addCell(loan.getStatus());
                 }
 
                 document.add(table);
