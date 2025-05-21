@@ -51,8 +51,8 @@ public class CustomerDashboard {
         return accounts;
     }
 
-    public List<bankingsystemfinal.TransactionHistory.TransactionRecord> getTransactions() {
-        List<bankingsystemfinal.TransactionHistory.TransactionRecord> transactions = new ArrayList<>();
+    public List<TransactionRecord> getTransactions() {
+        List<TransactionRecord> transactions = new ArrayList<>();
         Connection conn = bankingsystemfinal.DBConnection.getConnection();
         if (conn == null) {
             System.out.println("Connection is null, cannot fetch transactions.");
@@ -60,22 +60,80 @@ public class CustomerDashboard {
         }
 
         try {
-            String sql = "SELECT * FROM transactions WHERE account_id IN (SELECT account_id FROM accounts WHERE customer_id = ?)";
-            System.out.println("Executing query: " + sql + " with customerId = " + customerId);
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, customerId);
-            ResultSet rs = stmt.executeQuery();
-            System.out.println("ResultSet retrieved, processing rows...");
-            while (rs.next()) {
-                transactions.add(new bankingsystemfinal.TransactionHistory.TransactionRecord(
-                        rs.getInt("account_id"),
-                        rs.getString("type"),
-                        rs.getDouble("amount"),
-                        rs.getString("timestamp")
+            // Fetch completed transactions
+            String sqlTransactions = "SELECT * FROM transactions WHERE account_id IN (SELECT account_id FROM accounts WHERE customer_id = ?)";
+            System.out.println("Executing query: " + sqlTransactions + " with customerId = " + customerId);
+            PreparedStatement stmtTransactions = conn.prepareStatement(sqlTransactions);
+            stmtTransactions.setInt(1, customerId);
+            ResultSet rsTransactions = stmtTransactions.executeQuery();
+            while (rsTransactions.next()) {
+                transactions.add(new TransactionRecord(
+                        rsTransactions.getInt("account_id"),
+                        0, // No "Account ID To" for regular transactions
+                        rsTransactions.getString("type"),
+                        rsTransactions.getDouble("amount"),
+                        rsTransactions.getString("timestamp"),
+                        "Completed"
                 ));
             }
-            System.out.println("Fetched " + transactions.size() + " transaction(s).");
-            stmt.close();
+            stmtTransactions.close();
+
+            // Fetch deposit requests
+            String sqlDeposits = "SELECT * FROM deposit_requests WHERE account_id IN (SELECT account_id FROM accounts WHERE customer_id = ?)";
+            System.out.println("Executing query: " + sqlDeposits + " with customerId = " + customerId);
+            PreparedStatement stmtDeposits = conn.prepareStatement(sqlDeposits);
+            stmtDeposits.setInt(1, customerId);
+            ResultSet rsDeposits = stmtDeposits.executeQuery();
+            while (rsDeposits.next()) {
+                transactions.add(new TransactionRecord(
+                        rsDeposits.getInt("account_id"),
+                        0, // No "Account ID To" for deposits
+                        "Deposit Request",
+                        rsDeposits.getDouble("amount"),
+                        rsDeposits.getString("timestamp"),
+                        rsDeposits.getString("status")
+                ));
+            }
+            stmtDeposits.close();
+
+            // Fetch withdraw requests
+            String sqlWithdraws = "SELECT * FROM withdraw_requests WHERE account_id IN (SELECT account_id FROM accounts WHERE customer_id = ?)";
+            System.out.println("Executing query: " + sqlWithdraws + " with customerId = " + customerId);
+            PreparedStatement stmtWithdraws = conn.prepareStatement(sqlWithdraws);
+            stmtWithdraws.setInt(1, customerId);
+            ResultSet rsWithdraws = stmtWithdraws.executeQuery();
+            while (rsWithdraws.next()) {
+                transactions.add(new TransactionRecord(
+                        rsWithdraws.getInt("account_id"),
+                        0, // No "Account ID To" for withdraws
+                        "Withdraw Request",
+                        rsWithdraws.getDouble("amount"),
+                        rsWithdraws.getString("timestamp"),
+                        rsWithdraws.getString("status")
+                ));
+            }
+            stmtWithdraws.close();
+
+            // Fetch transfers
+            String sqlTransfers = "SELECT * FROM transfers WHERE account_id_from IN (SELECT account_id FROM accounts WHERE customer_id = ?) OR account_id_to IN (SELECT account_id FROM accounts WHERE customer_id = ?)";
+            System.out.println("Executing query: " + sqlTransfers + " with customerId = " + customerId);
+            PreparedStatement stmtTransfers = conn.prepareStatement(sqlTransfers);
+            stmtTransfers.setInt(1, customerId);
+            stmtTransfers.setInt(2, customerId);
+            ResultSet rsTransfers = stmtTransfers.executeQuery();
+            while (rsTransfers.next()) {
+                transactions.add(new TransactionRecord(
+                        rsTransfers.getInt("account_id_from"),
+                        rsTransfers.getInt("account_id_to"),
+                        "Transfer Request",
+                        rsTransfers.getDouble("amount"),
+                        rsTransfers.getString("timestamp"),
+                        rsTransfers.getString("status")
+                ));
+            }
+            stmtTransfers.close();
+
+            System.out.println("Fetched " + transactions.size() + " transaction(s) including requests.");
         } catch (SQLException e) {
             System.err.println("Error fetching transactions: " + e.getMessage());
         } finally {
@@ -86,6 +144,32 @@ public class CustomerDashboard {
             }
         }
         return transactions;
+    }
+
+    // Inner class to represent a unified transaction record
+    public static class TransactionRecord {
+        private int accountIdFrom;
+        private int accountIdTo; // 0 if not applicable (e.g., for deposits, withdraws, regular transactions)
+        private String type;
+        private double amount;
+        private String timestamp;
+        private String status;
+
+        public TransactionRecord(int accountIdFrom, int accountIdTo, String type, double amount, String timestamp, String status) {
+            this.accountIdFrom = accountIdFrom;
+            this.accountIdTo = accountIdTo;
+            this.type = type;
+            this.amount = amount;
+            this.timestamp = timestamp;
+            this.status = status;
+        }
+
+        public int getAccountIdFrom() { return accountIdFrom; }
+        public int getAccountIdTo() { return accountIdTo; }
+        public String getType() { return type; }
+        public double getAmount() { return amount; }
+        public String getTimestamp() { return timestamp; }
+        public String getStatus() { return status; }
     }
 
     public List<bankingsystemfinal.AdminDashboard.DepositRequest> getDepositRequests() {

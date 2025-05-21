@@ -1,4 +1,5 @@
 package bankingsystemfinal;
+
 import bankingsystemfinal.AdminDashboard;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -10,6 +11,13 @@ import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.element.Table;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class AdminDashboardUI extends JFrame {
     private bankingsystemfinal.AdminDashboard adminDashboard;
@@ -19,6 +27,7 @@ public class AdminDashboardUI extends JFrame {
     private JTable loanTable;
     private JTable transferTable;
     private JTable withdrawTable;
+    private JTable transactionTable;
     private final String[] customerColumns = {"Customer ID", "Name", "Email", "Phone"}; // Define once at class level
 
     public AdminDashboardUI(bankingsystemfinal.AdminDashboard adminDashboard) {
@@ -109,14 +118,24 @@ public class AdminDashboardUI extends JFrame {
         JPanel transactionPanel = new JPanel(new BorderLayout());
         transactionPanel.setBackground(new Color(245, 245, 245));
         transactionPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        String[] transactionColumns = {"Account ID", "Type", "Amount", "Timestamp"};
+        String[] transactionColumns = {"Account ID From", "Account ID To", "Type", "Amount", "Timestamp", "Status"};
         DefaultTableModel transactionModel = new DefaultTableModel(transactionColumns, 0);
-        JTable transactionTable = new JTable(transactionModel);
+        transactionTable = new JTable(transactionModel);
         transactionTable.setBackground(Color.WHITE);
         transactionTable.setForeground(Color.BLACK);
         transactionTable.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
         JScrollPane transactionScroll = new JScrollPane(transactionTable);
         transactionPanel.add(transactionScroll, BorderLayout.CENTER);
+
+        // Add Export Button (Smaller Size)
+        JButton exportButton = new JButton("Export to PDF");
+        exportButton.setBackground(new Color(25, 118, 210));
+        exportButton.setForeground(Color.WHITE);
+        exportButton.setFocusPainted(false);
+        exportButton.setPreferredSize(new Dimension(120, 30)); // Smaller size
+        exportButton.addActionListener(e -> exportTransactionHistoryToPDF());
+        transactionPanel.add(exportButton, BorderLayout.SOUTH);
+
         updateTransactionTable(transactionTable);
         contentPanel.add(transactionPanel, "Transaction History");
 
@@ -275,12 +294,14 @@ public class AdminDashboardUI extends JFrame {
     private void updateTransactionTable(JTable transactionTable) {
         DefaultTableModel model = (DefaultTableModel) transactionTable.getModel();
         model.setRowCount(0);
-        for (bankingsystemfinal.TransactionHistory.TransactionRecord transaction : adminDashboard.getTransactionHistory()) {
+        for (bankingsystemfinal.AdminDashboard.TransactionRecord transaction : adminDashboard.getTransactionHistory()) {
             model.addRow(new Object[]{
-                    transaction.getAccountId(),
+                    transaction.getAccountIdFrom(),
+                    transaction.getAccountIdTo() == 0 ? "-" : transaction.getAccountIdTo(),
                     transaction.getType(),
                     String.format("%.2f", transaction.getAmount()),
-                    transaction.getTimestamp()
+                    transaction.getTimestamp(),
+                    transaction.getStatus()
             });
         }
     }
@@ -340,6 +361,45 @@ public class AdminDashboardUI extends JFrame {
                     request.getStatus(),
                     "Action"
             });
+        }
+    }
+
+    private void exportTransactionHistoryToPDF() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setSelectedFile(new java.io.File("Transaction_History_" + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".pdf"));
+        int result = fileChooser.showSaveDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            java.io.File file = fileChooser.getSelectedFile();
+            try (FileOutputStream fos = new FileOutputStream(file);
+                 PdfWriter writer = new PdfWriter(fos);
+                 PdfDocument pdf = new PdfDocument(writer);
+                 Document document = new Document(pdf)) {
+
+                document.add(new Paragraph("Transaction History"));
+                document.add(new Paragraph("Date: " + java.time.LocalDateTime.now()));
+
+                Table table = new Table(6);
+                table.addCell("Account ID From");
+                table.addCell("Account ID To");
+                table.addCell("Type");
+                table.addCell("Amount");
+                table.addCell("Timestamp");
+                table.addCell("Status");
+
+                for (bankingsystemfinal.AdminDashboard.TransactionRecord transaction : adminDashboard.getTransactionHistory()) {
+                    table.addCell(String.valueOf(transaction.getAccountIdFrom()));
+                    table.addCell(transaction.getAccountIdTo() == 0 ? "-" : String.valueOf(transaction.getAccountIdTo()));
+                    table.addCell(transaction.getType());
+                    table.addCell(String.format("%.2f", transaction.getAmount()));
+                    table.addCell(transaction.getTimestamp());
+                    table.addCell(transaction.getStatus());
+                }
+
+                document.add(table);
+                JOptionPane.showMessageDialog(this, "PDF exported successfully to " + file.getAbsolutePath(), "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Error exporting PDF: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 

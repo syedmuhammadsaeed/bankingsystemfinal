@@ -43,6 +43,31 @@ public class AdminDashboard {
         public String getStatus() { return status; }
     }
 
+    public static class TransactionRecord {
+        private int accountIdFrom;
+        private int accountIdTo; // 0 if not applicable (e.g., for deposits, withdraws, regular transactions)
+        private String type;
+        private double amount;
+        private String timestamp;
+        private String status;
+
+        public TransactionRecord(int accountIdFrom, int accountIdTo, String type, double amount, String timestamp, String status) {
+            this.accountIdFrom = accountIdFrom;
+            this.accountIdTo = accountIdTo;
+            this.type = type;
+            this.amount = amount;
+            this.timestamp = timestamp;
+            this.status = status;
+        }
+
+        public int getAccountIdFrom() { return accountIdFrom; }
+        public int getAccountIdTo() { return accountIdTo; }
+        public String getType() { return type; }
+        public double getAmount() { return amount; }
+        public String getTimestamp() { return timestamp; }
+        public String getStatus() { return status; }
+    }
+
     public static class DashboardMetrics {
         private int clientCount;
         private int activeLoans;
@@ -85,9 +110,83 @@ public class AdminDashboard {
         return customers;
     }
 
-    public List<bankingsystemfinal.TransactionHistory.TransactionRecord> getTransactionHistory() {
-        bankingsystemfinal.TransactionHistory history = new bankingsystemfinal.TransactionHistory();
-        return history.getTransactions();
+    public List<TransactionRecord> getTransactionHistory() {
+        List<TransactionRecord> transactions = new ArrayList<>();
+        Connection conn = bankingsystemfinal.DBConnection.getConnection();
+        if (conn == null) return transactions;
+
+        try {
+            // Fetch completed transactions
+            String sqlTransactions = "SELECT * FROM transactions";
+            PreparedStatement stmtTransactions = conn.prepareStatement(sqlTransactions);
+            ResultSet rsTransactions = stmtTransactions.executeQuery();
+            while (rsTransactions.next()) {
+                transactions.add(new TransactionRecord(
+                        rsTransactions.getInt("account_id"),
+                        0, // No "Account ID To" for regular transactions
+                        rsTransactions.getString("type"),
+                        rsTransactions.getDouble("amount"),
+                        rsTransactions.getString("timestamp"),
+                        "Completed"
+                ));
+            }
+            stmtTransactions.close();
+
+            // Fetch deposit requests
+            String sqlDeposits = "SELECT * FROM deposit_requests";
+            PreparedStatement stmtDeposits = conn.prepareStatement(sqlDeposits);
+            ResultSet rsDeposits = stmtDeposits.executeQuery();
+            while (rsDeposits.next()) {
+                transactions.add(new TransactionRecord(
+                        rsDeposits.getInt("account_id"),
+                        0, // No "Account ID To" for deposits
+                        "Deposit Request",
+                        rsDeposits.getDouble("amount"),
+                        rsDeposits.getString("timestamp"),
+                        rsDeposits.getString("status")
+                ));
+            }
+            stmtDeposits.close();
+
+            // Fetch withdraw requests
+            String sqlWithdraws = "SELECT * FROM withdraw_requests";
+            PreparedStatement stmtWithdraws = conn.prepareStatement(sqlWithdraws);
+            ResultSet rsWithdraws = stmtWithdraws.executeQuery();
+            while (rsWithdraws.next()) {
+                transactions.add(new TransactionRecord(
+                        rsWithdraws.getInt("account_id"),
+                        0, // No "Account ID To" for withdraws
+                        "Withdraw Request",
+                        rsWithdraws.getDouble("amount"),
+                        rsWithdraws.getString("timestamp"),
+                        rsWithdraws.getString("status")
+                ));
+            }
+            stmtWithdraws.close();
+
+            // Fetch transfer requests
+            String sqlTransfers = "SELECT * FROM transfers";
+            PreparedStatement stmtTransfers = conn.prepareStatement(sqlTransfers);
+            ResultSet rsTransfers = stmtTransfers.executeQuery();
+            while (rsTransfers.next()) {
+                transactions.add(new TransactionRecord(
+                        rsTransfers.getInt("account_id_from"),
+                        rsTransfers.getInt("account_id_to"),
+                        "Transfer Request",
+                        rsTransfers.getDouble("amount"),
+                        rsTransfers.getString("timestamp"),
+                        rsTransfers.getString("status")
+                ));
+            }
+            stmtTransfers.close();
+
+            System.out.println("Fetched " + transactions.size() + " transaction(s) including requests.");
+        } catch (SQLException e) {
+            System.err.println("Error fetching transactions: " + e.getMessage());
+        } finally {
+            try { conn.close(); } catch (SQLException e) { System.err.println("Error closing connection: " + e.getMessage()); }
+        }
+        return transactions;
     }
 
     public List<DepositRequest> getDepositRequests() {

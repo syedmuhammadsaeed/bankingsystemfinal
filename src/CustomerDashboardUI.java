@@ -4,7 +4,6 @@ import bankingsystemfinal.Account;
 import bankingsystemfinal.AdminDashboard;
 import bankingsystemfinal.CustomerDashboard;
 import bankingsystemfinal.Loan;
-import bankingsystemfinal.TransactionHistory;
 import bankingsystemfinal.Transfer;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -12,6 +11,13 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.element.Table;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class CustomerDashboardUI extends JFrame {
     private CustomerDashboard dashboard;
@@ -24,6 +30,7 @@ public class CustomerDashboardUI extends JFrame {
     private JLabel accountIdToLabel;
     private JButton actionButton;
     private JPanel bottomPanel;
+    private JPanel transactionPanel;
     private String currentTab = "Accounts";
 
     public CustomerDashboardUI(CustomerDashboard dashboard) {
@@ -88,7 +95,6 @@ public class CustomerDashboardUI extends JFrame {
         tableModel = new DefaultTableModel(initialColumns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                // Make all cells non-editable for all tabs
                 return false;
             }
         };
@@ -99,7 +105,7 @@ public class CustomerDashboardUI extends JFrame {
         JScrollPane scrollPane = new JScrollPane(accountsTable);
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
-        // Dynamic Bottom Panel
+        // Dynamic Bottom Panel for Input Fields
         bottomPanel = new JPanel(new GridBagLayout());
         bottomPanel.setVisible(false);
         GridBagConstraints gbc = new GridBagConstraints();
@@ -142,7 +148,23 @@ public class CustomerDashboardUI extends JFrame {
         gbc.gridx = 1;
         bottomPanel.add(refreshButton, gbc);
 
+        // Transaction-specific panel for Export button
+        transactionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton exportButton = new JButton("Export to PDF");
+        exportButton.setBackground(new Color(25, 118, 210));
+        exportButton.setForeground(Color.WHITE);
+        exportButton.setFocusPainted(false);
+        exportButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                exportTransactionsToPDF();
+            }
+        });
+        transactionPanel.add(exportButton);
+        transactionPanel.setVisible(false);
+
         mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+        mainPanel.add(transactionPanel, BorderLayout.NORTH);
 
         // Action Listeners
         actionButton.addActionListener(new ActionListener() {
@@ -202,6 +224,7 @@ public class CustomerDashboardUI extends JFrame {
     private void updateTableForTab(String tab) {
         tableModel.setRowCount(0); // Clear existing rows
         bottomPanel.setVisible(true); // Show bottom panel by default
+        transactionPanel.setVisible(false); // Hide transaction panel by default
 
         switch (tab) {
             case "Accounts":
@@ -219,17 +242,20 @@ public class CustomerDashboardUI extends JFrame {
                 break;
 
             case "Transactions":
-                tableModel.setColumnIdentifiers(new String[]{"Account ID", "Type", "Amount", "Timestamp"});
-                List<TransactionHistory.TransactionRecord> transactions = dashboard.getTransactions();
-                for (TransactionHistory.TransactionRecord transaction : transactions) {
+                tableModel.setColumnIdentifiers(new String[]{"Account ID From", "Account ID To", "Type", "Amount", "Timestamp", "Status"});
+                List<CustomerDashboard.TransactionRecord> transactions = dashboard.getTransactions();
+                for (CustomerDashboard.TransactionRecord transaction : transactions) {
                     tableModel.addRow(new Object[]{
-                            transaction.getAccountId(),
+                            transaction.getAccountIdFrom(),
+                            transaction.getAccountIdTo() == 0 ? "-" : transaction.getAccountIdTo(),
                             transaction.getType(),
                             transaction.getAmount(),
-                            transaction.getTimestamp()
+                            transaction.getTimestamp(),
+                            transaction.getStatus()
                     });
                 }
                 bottomPanel.setVisible(false); // Hide bottom panel for Transactions
+                transactionPanel.setVisible(true); // Show export button for Transactions
                 break;
 
             case "Deposit Request":
@@ -310,6 +336,45 @@ public class CustomerDashboardUI extends JFrame {
                 }
                 bottomPanel.setVisible(false); // Hide bottom panel for Notifications
                 break;
+        }
+    }
+
+    private void exportTransactionsToPDF() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setSelectedFile(new java.io.File("Transaction_History_" + customerId + ".pdf"));
+        int result = fileChooser.showSaveDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            java.io.File file = fileChooser.getSelectedFile();
+            try (FileOutputStream fos = new FileOutputStream(file);
+                 PdfWriter writer = new PdfWriter(fos);
+                 PdfDocument pdf = new PdfDocument(writer);
+                 Document document = new Document(pdf)) {
+
+                document.add(new Paragraph("Transaction History for Customer ID: " + customerId));
+                document.add(new Paragraph("Date: " + java.time.LocalDateTime.now()));
+
+                Table table = new Table(6);
+                table.addCell("Account ID From");
+                table.addCell("Account ID To");
+                table.addCell("Type");
+                table.addCell("Amount");
+                table.addCell("Timestamp");
+                table.addCell("Status");
+
+                for (CustomerDashboard.TransactionRecord transaction : dashboard.getTransactions()) {
+                    table.addCell(String.valueOf(transaction.getAccountIdFrom()));
+                    table.addCell(transaction.getAccountIdTo() == 0 ? "-" : String.valueOf(transaction.getAccountIdTo()));
+                    table.addCell(transaction.getType());
+                    table.addCell(String.valueOf(transaction.getAmount()));
+                    table.addCell(transaction.getTimestamp());
+                    table.addCell(transaction.getStatus());
+                }
+
+                document.add(table);
+                JOptionPane.showMessageDialog(this, "PDF exported successfully to " + file.getAbsolutePath(), "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Error exporting PDF: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
