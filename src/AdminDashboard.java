@@ -24,6 +24,25 @@ public class AdminDashboard {
         public String getStatus() { return status; }
     }
 
+    public static class WithdrawRequest {
+        private int accountId;
+        private double amount;
+        private String timestamp;
+        private String status;
+
+        public WithdrawRequest(int accountId, double amount, String timestamp, String status) {
+            this.accountId = accountId;
+            this.amount = amount;
+            this.timestamp = timestamp;
+            this.status = status;
+        }
+
+        public int getAccountId() { return accountId; }
+        public double getAmount() { return amount; }
+        public String getTimestamp() { return timestamp; }
+        public String getStatus() { return status; }
+    }
+
     public static class DashboardMetrics {
         private int clientCount;
         private int activeLoans;
@@ -91,6 +110,32 @@ public class AdminDashboard {
             stmt.close();
         } catch (SQLException e) {
             System.err.println("Error fetching deposit requests: " + e.getMessage());
+        } finally {
+            try { conn.close(); } catch (SQLException e) { System.err.println("Error closing connection: " + e.getMessage()); }
+        }
+        return requests;
+    }
+
+    public List<WithdrawRequest> getWithdrawRequests() {
+        List<WithdrawRequest> requests = new ArrayList<>();
+        Connection conn = bankingsystemfinal.DBConnection.getConnection();
+        if (conn == null) return requests;
+
+        try {
+            String sql = "SELECT * FROM withdraw_requests";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                requests.add(new WithdrawRequest(
+                        rs.getInt("account_id"),
+                        rs.getDouble("amount"),
+                        rs.getString("timestamp"),
+                        rs.getString("status")
+                ));
+            }
+            stmt.close();
+        } catch (SQLException e) {
+            System.err.println("Error fetching withdraw requests: " + e.getMessage());
         } finally {
             try { conn.close(); } catch (SQLException e) { System.err.println("Error closing connection: " + e.getMessage()); }
         }
@@ -200,6 +245,108 @@ public class AdminDashboard {
             return rowsAffected > 0;
         } catch (SQLException e) {
             System.err.println("Error disapproving deposit: " + e.getMessage());
+            return false;
+        } finally {
+            try { conn.close(); } catch (SQLException e) { System.err.println("Error closing connection: " + e.getMessage()); }
+        }
+    }
+
+    public boolean approveWithdraw(int accountId, double amount, int adminId) {
+        Connection conn = bankingsystemfinal.DBConnection.getConnection();
+        if (conn == null) return false;
+
+        try {
+            conn.setAutoCommit(false);
+
+            // Check account balance
+            String checkBalanceSql = "SELECT balance FROM accounts WHERE account_id = ?";
+            PreparedStatement checkStmt = conn.prepareStatement(checkBalanceSql);
+            checkStmt.setInt(1, accountId);
+            ResultSet rs = checkStmt.executeQuery();
+            if (!rs.next() || rs.getDouble("balance") < amount) {
+                conn.rollback();
+                System.err.println("Insufficient balance or account not found for account_id: " + accountId);
+                checkStmt.close();
+                return false;
+            }
+            checkStmt.close();
+
+            // Update withdraw request status
+            String updateRequestSql = "UPDATE withdraw_requests SET status = ?, admin_id = ? WHERE account_id = ? AND amount = ? AND status = 'Pending'";
+            PreparedStatement updateStmt = conn.prepareStatement(updateRequestSql);
+            updateStmt.setString(1, "Approved");
+            updateStmt.setInt(2, adminId);
+            updateStmt.setInt(3, accountId);
+            updateStmt.setDouble(4, amount);
+            int requestRowsAffected = updateStmt.executeUpdate();
+            updateStmt.close();
+
+            if (requestRowsAffected == 0) {
+                conn.rollback();
+                System.err.println("No pending withdraw request found for account_id: " + accountId + " and amount: " + amount);
+                return false;
+            }
+
+            // Update account balance
+            String updateBalanceSql = "UPDATE accounts SET balance = balance - ? WHERE account_id = ?";
+            PreparedStatement balanceStmt = conn.prepareStatement(updateBalanceSql);
+            balanceStmt.setDouble(1, amount);
+            balanceStmt.setInt(2, accountId);
+            int balanceRowsAffected = balanceStmt.executeUpdate();
+            balanceStmt.close();
+
+            if (balanceRowsAffected == 0) {
+                conn.rollback();
+                System.err.println("Failed to update balance: Account not found for account_id: " + accountId);
+                return false;
+            }
+
+            // Record transaction
+            String insertTransactionSql = "INSERT INTO transactions (account_id, type, amount, timestamp) VALUES (?, ?, ?, ?)";
+            PreparedStatement transactionStmt = conn.prepareStatement(insertTransactionSql);
+            transactionStmt.setInt(1, accountId);
+            transactionStmt.setString(2, "Withdraw");
+            transactionStmt.setDouble(3, amount);
+            transactionStmt.setString(4, java.time.LocalDateTime.now().toString());
+            transactionStmt.executeUpdate();
+            transactionStmt.close();
+
+            conn.commit();
+            return true;
+
+        } catch (SQLException e) {
+            try {
+                conn.rollback();
+            } catch (SQLException rollbackEx) {
+                System.err.println("Error rolling back transaction: " + rollbackEx.getMessage());
+            }
+            System.err.println("Error approving withdraw: " + e.getMessage());
+            return false;
+        } finally {
+            try {
+                conn.setAutoCommit(true);
+                conn.close();
+            } catch (SQLException e) {
+                System.err.println("Error closing connection: " + e.getMessage());
+            }
+        }
+    }
+
+    public boolean rejectWithdraw(int accountId, double amount, int adminId) {
+        Connection conn = bankingsystemfinal.DBConnection.getConnection();
+        if (conn == null) return false;
+
+        try {
+            String sql = "UPDATE withdraw_requests SET status = 'Rejected', admin_id = ? WHERE account_id = ? AND amount = ? AND status = 'Pending'";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, adminId);
+            stmt.setInt(2, accountId);
+            stmt.setDouble(3, amount);
+            int rowsAffected = stmt.executeUpdate();
+            stmt.close();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error rejecting withdraw: " + e.getMessage());
             return false;
         } finally {
             try { conn.close(); } catch (SQLException e) { System.err.println("Error closing connection: " + e.getMessage()); }
@@ -369,6 +516,27 @@ public class AdminDashboard {
             return rowsAffected > 0;
         } catch (SQLException e) {
             System.err.println("Error rejecting transfer: " + e.getMessage());
+            return false;
+        } finally {
+            try { conn.close(); } catch (SQLException e) { System.err.println("Error closing connection: " + e.getMessage()); }
+        }
+    }
+
+    public boolean sendNotification(int customerId, String message) {
+        Connection conn = bankingsystemfinal.DBConnection.getConnection();
+        if (conn == null) return false;
+
+        try {
+            String sql = "INSERT INTO notifications (customer_id, message, timestamp) VALUES (?, ?, ?)";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, customerId);
+            stmt.setString(2, message);
+            stmt.setString(3, java.time.LocalDateTime.now().toString());
+            int rowsAffected = stmt.executeUpdate();
+            stmt.close();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error sending notification: " + e.getMessage());
             return false;
         } finally {
             try { conn.close(); } catch (SQLException e) { System.err.println("Error closing connection: " + e.getMessage()); }

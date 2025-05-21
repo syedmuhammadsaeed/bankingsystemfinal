@@ -45,7 +45,7 @@ public class CustomerDashboardUI extends JFrame {
         sidebarPanel.setBackground(new Color(33, 33, 33));
         sidebarPanel.setPreferredSize(new Dimension(200, 0));
 
-        String[] tabs = {"Accounts", "Transactions", "Deposit Request", "Loan Request", "Transfer"};
+        String[] tabs = {"Accounts", "Transactions", "Deposit Request", "Loan Request", "Transfer", "Withdraw Request", "Notifications"};
         for (String tab : tabs) {
             JButton tabButton = new JButton("  " + tab);
             tabButton.setFont(new Font("Arial", Font.PLAIN, 16));
@@ -73,7 +73,7 @@ public class CustomerDashboardUI extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 dispose();
-                new bankingsystemfinal.LoginUI(new bankingsystemfinal.Admin()).setVisible(true); // Updated to match constructor
+                new bankingsystemfinal.LoginUI(new bankingsystemfinal.Admin()).setVisible(true);
             }
         });
         sidebarPanel.add(logoutButton);
@@ -85,8 +85,17 @@ public class CustomerDashboardUI extends JFrame {
 
         // Center Table
         String[] initialColumns = {"Account ID", "Account Type", "Balance", "Status"};
-        tableModel = new DefaultTableModel(initialColumns, 0);
+        tableModel = new DefaultTableModel(initialColumns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                // Make all cells non-editable for all tabs
+                return false;
+            }
+        };
         accountsTable = new JTable(tableModel);
+        accountsTable.setBackground(Color.WHITE);
+        accountsTable.setForeground(Color.BLACK);
+        accountsTable.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
         JScrollPane scrollPane = new JScrollPane(accountsTable);
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
@@ -163,6 +172,13 @@ public class CustomerDashboardUI extends JFrame {
                             updateTableForTab(currentTab);
                         } else {
                             JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error transferring money: Invalid accounts or insufficient balance.", "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } else if ("Withdraw Request".equals(currentTab)) {
+                        if (dashboard.withdraw(accountId, amount)) {
+                            JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Withdraw request successful!");
+                            updateTableForTab(currentTab);
+                        } else {
+                            JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error requesting withdraw: Account not found or does not belong to this customer.", "Error", JOptionPane.ERROR_MESSAGE);
                         }
                     }
                 } catch (NumberFormatException ex) {
@@ -264,6 +280,35 @@ public class CustomerDashboardUI extends JFrame {
                 accountIdToLabel.setVisible(true);
                 accountIdToField.setVisible(true);
                 actionButton.setText("Request Transfer");
+                break;
+
+            case "Withdraw Request":
+                tableModel.setColumnIdentifiers(new String[]{"Account ID", "Amount", "Timestamp", "Status"});
+                List<AdminDashboard.WithdrawRequest> withdrawRequests = dashboard.getWithdrawRequests();
+                for (AdminDashboard.WithdrawRequest request : withdrawRequests) {
+                    tableModel.addRow(new Object[]{
+                            request.getAccountId(),
+                            request.getAmount(),
+                            request.getTimestamp(),
+                            request.getStatus()
+                    });
+                }
+                accountIdToLabel.setVisible(false);
+                accountIdToField.setVisible(false);
+                actionButton.setText("Request Withdraw");
+                break;
+
+            case "Notifications":
+                tableModel.setColumnIdentifiers(new String[]{"ID", "Message", "Timestamp"});
+                List<CustomerDashboard.Notification> notifications = dashboard.getNotifications();
+                for (CustomerDashboard.Notification notification : notifications) {
+                    tableModel.addRow(new Object[]{
+                            notification.getId(),
+                            notification.getMessage(),
+                            notification.getTimestamp()
+                    });
+                }
+                bottomPanel.setVisible(false); // Hide bottom panel for Notifications
                 break;
         }
     }

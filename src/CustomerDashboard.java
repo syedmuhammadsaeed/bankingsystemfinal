@@ -277,4 +277,115 @@ public class CustomerDashboard {
             }
         }
     }
+
+    public static class Notification {
+        private int id;
+        private String message;
+        private String timestamp;
+
+        public Notification(int id, String message, String timestamp) {
+            this.id = id;
+            this.message = message;
+            this.timestamp = timestamp;
+        }
+
+        public int getId() { return id; }
+        public String getMessage() { return message; }
+        public String getTimestamp() { return timestamp; }
+    }
+
+    public List<Notification> getNotifications() {
+        List<Notification> notifications = new ArrayList<>();
+        Connection conn = bankingsystemfinal.DBConnection.getConnection();
+        if (conn == null) {
+            System.out.println("Connection is null, cannot fetch notifications.");
+            return notifications;
+        }
+
+        try {
+            String sql = "SELECT * FROM notifications WHERE customer_id = ? ORDER BY timestamp DESC";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, customerId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                notifications.add(new Notification(
+                        rs.getInt("id"),
+                        rs.getString("message"),
+                        rs.getString("timestamp")
+                ));
+            }
+            stmt.close();
+        } catch (SQLException e) {
+            System.err.println("Error fetching notifications: " + e.getMessage());
+        } finally {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                System.err.println("Error closing connection: " + e.getMessage());
+            }
+        }
+        return notifications;
+    }
+
+    public List<bankingsystemfinal.AdminDashboard.WithdrawRequest> getWithdrawRequests() {
+        List<bankingsystemfinal.AdminDashboard.WithdrawRequest> requests = new ArrayList<>();
+        Connection conn = bankingsystemfinal.DBConnection.getConnection();
+        if (conn == null) {
+            System.out.println("Connection is null, cannot fetch withdraw requests.");
+            return requests;
+        }
+
+        try {
+            String sql = "SELECT * FROM withdraw_requests WHERE account_id IN (SELECT account_id FROM accounts WHERE customer_id = ?)";
+            System.out.println("Executing query: " + sql + " with customerId = " + customerId);
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, customerId);
+            ResultSet rs = stmt.executeQuery();
+            System.out.println("ResultSet retrieved, processing rows...");
+            while (rs.next()) {
+                requests.add(new bankingsystemfinal.AdminDashboard.WithdrawRequest(
+                        rs.getInt("account_id"),
+                        rs.getDouble("amount"),
+                        rs.getString("timestamp"),
+                        rs.getString("status")
+                ));
+            }
+            System.out.println("Fetched " + requests.size() + " withdraw request(s).");
+            stmt.close();
+        } catch (SQLException e) {
+            System.err.println("Error fetching withdraw requests: " + e.getMessage());
+        } finally {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                System.err.println("Error closing connection: " + e.getMessage());
+            }
+        }
+        return requests;
+    }
+
+    public boolean withdraw(int accountId, double amount) {
+        Connection conn = bankingsystemfinal.DBConnection.getConnection();
+        if (conn == null) return false;
+
+        try {
+            String sql = "INSERT INTO withdraw_requests (account_id, amount, timestamp, status) VALUES (?, ?, ?, 'Pending')";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, accountId);
+            stmt.setDouble(2, amount);
+            stmt.setString(3, java.time.LocalDateTime.now().toString());
+            int rowsAffected = stmt.executeUpdate();
+            stmt.close();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error requesting withdraw: " + e.getMessage());
+            return false;
+        } finally {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                System.err.println("Error closing connection: " + e.getMessage());
+            }
+        }
+    }
 }

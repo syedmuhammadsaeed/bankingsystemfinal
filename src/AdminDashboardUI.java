@@ -1,5 +1,5 @@
 package bankingsystemfinal;
-
+import bankingsystemfinal.AdminDashboard;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
@@ -18,6 +18,8 @@ public class AdminDashboardUI extends JFrame {
     private JTable depositTable;
     private JTable loanTable;
     private JTable transferTable;
+    private JTable withdrawTable;
+    private final String[] customerColumns = {"Customer ID", "Name", "Email", "Phone"}; // Define once at class level
 
     public AdminDashboardUI(bankingsystemfinal.AdminDashboard adminDashboard) {
         this.adminDashboard = adminDashboard;
@@ -63,7 +65,7 @@ public class AdminDashboardUI extends JFrame {
         sidebarPanel.setBackground(new Color(33, 33, 33));
         sidebarPanel.setPreferredSize(new Dimension(200, 0));
 
-        String[] menuItems = {"Customer Details", "Transaction History", "Deposit Requests", "Loan Requests", "Transfer Requests"};
+        String[] menuItems = {"Customer Details", "Transaction History", "Deposit Requests", "Loan Requests", "Transfer Requests", "Withdraw Requests", "Notifications"};
         for (String menuItem : menuItems) {
             JButton menuButton = new JButton("  " + menuItem);
             menuButton.setFont(new Font("Arial", Font.PLAIN, 16));
@@ -93,7 +95,6 @@ public class AdminDashboardUI extends JFrame {
         JPanel customerPanel = new JPanel(new BorderLayout());
         customerPanel.setBackground(new Color(245, 245, 245));
         customerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        String[] customerColumns = {"Customer ID", "Name", "Email", "Phone"};
         DefaultTableModel customerModel = new DefaultTableModel(customerColumns, 0);
         JTable customerTable = new JTable(customerModel);
         customerTable.setBackground(Color.WHITE);
@@ -179,6 +180,78 @@ public class AdminDashboardUI extends JFrame {
         updateTransferTable(transferTable);
         contentPanel.add(transferPanel, "Transfer Requests");
 
+        // Withdraw Requests Panel
+        JPanel withdrawPanel = new JPanel(new BorderLayout());
+        withdrawPanel.setBackground(new Color(245, 245, 245));
+        withdrawPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        String[] withdrawColumns = {"Account ID", "Amount", "Timestamp", "Status", "Action"};
+        DefaultTableModel withdrawModel = new DefaultTableModel(withdrawColumns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return column == 4; }
+        };
+        withdrawTable = new JTable(withdrawModel);
+        withdrawTable.setBackground(Color.WHITE);
+        withdrawTable.setForeground(Color.BLACK);
+        withdrawTable.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
+        withdrawTable.getColumn("Action").setCellRenderer(new ButtonRenderer());
+        withdrawTable.getColumn("Action").setCellEditor(new WithdrawButtonEditor(withdrawTable));
+        JScrollPane withdrawScroll = new JScrollPane(withdrawTable);
+        withdrawPanel.add(withdrawScroll, BorderLayout.CENTER);
+        updateWithdrawTable(withdrawTable);
+        contentPanel.add(withdrawPanel, "Withdraw Requests");
+
+        // Notifications Panel
+        JPanel notificationsPanel = new JPanel(new BorderLayout());
+        notificationsPanel.setBackground(new Color(245, 245, 245));
+        notificationsPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        // Customer Selection Table
+        DefaultTableModel customerModelForNotifications = new DefaultTableModel(customerColumns, 0);
+        JTable customerTableForNotifications = new JTable(customerModelForNotifications);
+        customerTableForNotifications.setBackground(Color.WHITE);
+        customerTableForNotifications.setForeground(Color.BLACK);
+        customerTableForNotifications.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
+        JScrollPane customerScrollForNotifications = new JScrollPane(customerTableForNotifications);
+        updateCustomerTable(customerTableForNotifications);
+
+        // Message Input and Send Button
+        JPanel inputPanel = new JPanel(new BorderLayout());
+        JTextArea messageArea = new JTextArea(5, 20);
+        messageArea.setLineWrap(true);
+        messageArea.setWrapStyleWord(true);
+        JScrollPane messageScroll = new JScrollPane(messageArea);
+        JButton sendButton = new JButton("Send Notification");
+        sendButton.setBackground(new Color(25, 118, 210));
+        sendButton.setForeground(Color.WHITE);
+        sendButton.setFocusPainted(false);
+        sendButton.addActionListener(e -> {
+            int selectedRow = customerTableForNotifications.getSelectedRow();
+            if (selectedRow >= 0) {
+                int customerId = (int) customerTableForNotifications.getModel().getValueAt(selectedRow, 0);
+                String message = messageArea.getText().trim();
+                if (!message.isEmpty()) {
+                    if (adminDashboard.sendNotification(customerId, message)) {
+                        JOptionPane.showMessageDialog(notificationsPanel, "Notification sent successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                        messageArea.setText(""); // Clear the text area
+                    } else {
+                        JOptionPane.showMessageDialog(notificationsPanel, "Failed to send notification.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(notificationsPanel, "Please enter a message.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                JOptionPane.showMessageDialog(notificationsPanel, "Please select a customer.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        inputPanel.add(new JLabel("Message:"), BorderLayout.NORTH);
+        inputPanel.add(messageScroll, BorderLayout.CENTER);
+        inputPanel.add(sendButton, BorderLayout.SOUTH);
+
+        notificationsPanel.add(customerScrollForNotifications, BorderLayout.CENTER);
+        notificationsPanel.add(inputPanel, BorderLayout.SOUTH);
+        contentPanel.add(notificationsPanel, "Notifications");
+
         // Add components to frame
         add(headerPanel, BorderLayout.NORTH);
         add(sidebarPanel, BorderLayout.WEST);
@@ -256,6 +329,20 @@ public class AdminDashboardUI extends JFrame {
         }
     }
 
+    private void updateWithdrawTable(JTable withdrawTable) {
+        DefaultTableModel model = (DefaultTableModel) withdrawTable.getModel();
+        model.setRowCount(0);
+        for (bankingsystemfinal.AdminDashboard.WithdrawRequest request : adminDashboard.getWithdrawRequests()) {
+            model.addRow(new Object[]{
+                    request.getAccountId(),
+                    String.format("%.2f", request.getAmount()),
+                    request.getTimestamp(),
+                    request.getStatus(),
+                    "Action"
+            });
+        }
+    }
+
     private class ButtonRenderer extends JButton implements TableCellRenderer {
         public ButtonRenderer() { setOpaque(true); }
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -278,40 +365,30 @@ public class AdminDashboardUI extends JFrame {
             button.setBackground(new Color(25, 118, 210));
             button.setForeground(Color.WHITE);
             button.addActionListener(e -> {
-                // Use the selected row instead of editing row
                 int selectedRow = table.getSelectedRow();
                 if (selectedRow >= 0) {
-                    // Convert the view row to model row in case of sorting/filtering
                     int modelRow = table.convertRowIndexToModel(selectedRow);
                     int accountId = (int) table.getModel().getValueAt(modelRow, 0);
                     double amount = Double.parseDouble(table.getModel().getValueAt(modelRow, 1).toString());
-                    System.out.println("Action button clicked for accountId: " + accountId + ", amount: " + amount);
                     Object[] options = {"Approve", "Reject"};
                     int choice = JOptionPane.showOptionDialog(button, "Choose action:", "Action",
                             JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
-                    if (choice == 0) { // Approve
-                        System.out.println("Attempting to approve deposit...");
+                    if (choice == 0) {
                         if (adminDashboard.approveDeposit(accountId, amount, adminId)) {
-                            System.out.println("Deposit approved successfully.");
                             JOptionPane.showMessageDialog(button, "Deposit approved successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
                             updateDepositTable(table);
                         } else {
-                            System.out.println("Failed to approve deposit.");
                             JOptionPane.showMessageDialog(button, "Failed to approve deposit. Check if the request is pending and matches the account and amount.", "Error", JOptionPane.ERROR_MESSAGE);
                         }
-                    } else if (choice == 1) { // Reject
-                        System.out.println("Attempting to reject deposit...");
+                    } else if (choice == 1) {
                         if (adminDashboard.disapproveDeposit(accountId, amount, adminId)) {
-                            System.out.println("Deposit rejected successfully.");
                             JOptionPane.showMessageDialog(button, "Deposit rejected successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
                             updateDepositTable(table);
                         } else {
-                            System.out.println("Failed to reject deposit.");
                             JOptionPane.showMessageDialog(button, "Failed to reject deposit. Check if the request is pending and matches the account and amount.", "Error", JOptionPane.ERROR_MESSAGE);
                         }
                     }
                 } else {
-                    System.out.println("No row selected.");
                     JOptionPane.showMessageDialog(button, "Please select a row to perform an action.", "Error", JOptionPane.ERROR_MESSAGE);
                 }
                 fireEditingStopped();
@@ -347,33 +424,25 @@ public class AdminDashboardUI extends JFrame {
                     int modelRow = table.convertRowIndexToModel(selectedRow);
                     int accountId = (int) table.getModel().getValueAt(modelRow, 0);
                     double amount = Double.parseDouble(table.getModel().getValueAt(modelRow, 1).toString());
-                    System.out.println("Action button clicked for loan - accountId: " + accountId + ", amount: " + amount);
                     Object[] options = {"Approve", "Reject"};
                     int choice = JOptionPane.showOptionDialog(button, "Choose action:", "Action",
                             JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
-                    if (choice == 0) { // Approve
-                        System.out.println("Attempting to approve loan...");
+                    if (choice == 0) {
                         if (adminDashboard.approveLoan(accountId, amount, adminId)) {
-                            System.out.println("Loan approved successfully.");
                             JOptionPane.showMessageDialog(button, "Loan approved successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
                             updateLoanTable(table);
                         } else {
-                            System.out.println("Failed to approve loan.");
                             JOptionPane.showMessageDialog(button, "Failed to approve loan. Check if the request is pending and matches the account and amount.", "Error", JOptionPane.ERROR_MESSAGE);
                         }
-                    } else if (choice == 1) { // Reject
-                        System.out.println("Attempting to reject loan...");
+                    } else if (choice == 1) {
                         if (adminDashboard.rejectLoan(accountId, amount, adminId)) {
-                            System.out.println("Loan rejected successfully.");
                             JOptionPane.showMessageDialog(button, "Loan rejected successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
                             updateLoanTable(table);
                         } else {
-                            System.out.println("Failed to reject loan.");
                             JOptionPane.showMessageDialog(button, "Failed to reject loan. Check if the request is pending and matches the account and amount.", "Error", JOptionPane.ERROR_MESSAGE);
                         }
                     }
                 } else {
-                    System.out.println("No row selected for loan action.");
                     JOptionPane.showMessageDialog(button, "Please select a row to perform an action.", "Error", JOptionPane.ERROR_MESSAGE);
                 }
                 fireEditingStopped();
@@ -410,33 +479,79 @@ public class AdminDashboardUI extends JFrame {
                     int accountIdFrom = (int) table.getModel().getValueAt(modelRow, 0);
                     int accountIdTo = (int) table.getModel().getValueAt(modelRow, 1);
                     double amount = Double.parseDouble(table.getModel().getValueAt(modelRow, 2).toString());
-                    System.out.println("Action button clicked for transfer - accountIdFrom: " + accountIdFrom + ", accountIdTo: " + accountIdTo + ", amount: " + amount);
                     Object[] options = {"Approve", "Reject"};
                     int choice = JOptionPane.showOptionDialog(button, "Choose action:", "Action",
                             JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
-                    if (choice == 0) { // Approve
-                        System.out.println("Attempting to approve transfer...");
+                    if (choice == 0) {
                         if (adminDashboard.approveTransfer(accountIdFrom, accountIdTo, amount, adminId)) {
-                            System.out.println("Transfer approved successfully.");
                             JOptionPane.showMessageDialog(button, "Transfer approved successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
                             updateTransferTable(table);
                         } else {
-                            System.out.println("Failed to approve transfer.");
                             JOptionPane.showMessageDialog(button, "Failed to approve transfer. Check if the request is pending and matches the accounts and amount.", "Error", JOptionPane.ERROR_MESSAGE);
                         }
-                    } else if (choice == 1) { // Reject
-                        System.out.println("Attempting to reject transfer...");
+                    } else if (choice == 1) {
                         if (adminDashboard.rejectTransfer(accountIdFrom, accountIdTo, amount, adminId)) {
-                            System.out.println("Transfer rejected successfully.");
                             JOptionPane.showMessageDialog(button, "Transfer rejected successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
                             updateTransferTable(table);
                         } else {
-                            System.out.println("Failed to reject transfer.");
                             JOptionPane.showMessageDialog(button, "Failed to reject transfer. Check if the request is pending and matches the accounts and amount.", "Error", JOptionPane.ERROR_MESSAGE);
                         }
                     }
                 } else {
-                    System.out.println("No row selected for transfer action.");
+                    JOptionPane.showMessageDialog(button, "Please select a row to perform an action.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+                fireEditingStopped();
+            });
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            button.setText("Action");
+            return button;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return button.getText();
+        }
+    }
+
+    private class WithdrawButtonEditor extends AbstractCellEditor implements TableCellEditor {
+        private JButton button;
+        private JTable table;
+        private int adminId = 1; // Placeholder admin ID
+
+        public WithdrawButtonEditor(JTable table) {
+            this.table = table;
+            button = new JButton("Action");
+            button.setOpaque(true);
+            button.setBackground(new Color(25, 118, 210));
+            button.setForeground(Color.WHITE);
+            button.addActionListener(e -> {
+                int selectedRow = table.getSelectedRow();
+                if (selectedRow >= 0) {
+                    int modelRow = table.convertRowIndexToModel(selectedRow);
+                    int accountId = (int) table.getModel().getValueAt(modelRow, 0);
+                    double amount = Double.parseDouble(table.getModel().getValueAt(modelRow, 1).toString());
+                    Object[] options = {"Approve", "Reject"};
+                    int choice = JOptionPane.showOptionDialog(button, "Choose action:", "Action",
+                            JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+                    if (choice == 0) {
+                        if (adminDashboard.approveWithdraw(accountId, amount, adminId)) {
+                            JOptionPane.showMessageDialog(button, "Withdraw approved successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                            updateWithdrawTable(table);
+                        } else {
+                            JOptionPane.showMessageDialog(button, "Failed to approve withdraw. Check if the request is pending and matches the account and amount.", "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } else if (choice == 1) {
+                        if (adminDashboard.rejectWithdraw(accountId, amount, adminId)) {
+                            JOptionPane.showMessageDialog(button, "Withdraw rejected successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                            updateWithdrawTable(table);
+                        } else {
+                            JOptionPane.showMessageDialog(button, "Failed to reject withdraw. Check if the request is pending and matches the account and amount.", "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    }
+                } else {
                     JOptionPane.showMessageDialog(button, "Please select a row to perform an action.", "Error", JOptionPane.ERROR_MESSAGE);
                 }
                 fireEditingStopped();
@@ -457,8 +572,9 @@ public class AdminDashboardUI extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            bankingsystemfinal.AdminDashboard adminDashboard = new bankingsystemfinal.AdminDashboard();
-            new AdminDashboardUI(adminDashboard).setVisible(true);
+            AdminDashboard adminDashboard = new AdminDashboard();
+            AdminDashboardUI adminUI = new AdminDashboardUI(adminDashboard);
+            adminUI.setVisible(true);
         });
     }
 }
