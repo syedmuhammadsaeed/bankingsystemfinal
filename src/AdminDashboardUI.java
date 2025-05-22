@@ -20,7 +20,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 public class AdminDashboardUI extends JFrame {
-    private bankingsystemfinal.AdminDashboard adminDashboard; // Fixed declaration
+    private bankingsystemfinal.AdminDashboard adminDashboard;
     private JPanel contentPanel;
     private CardLayout cardLayout;
     private JTable depositTable;
@@ -28,7 +28,7 @@ public class AdminDashboardUI extends JFrame {
     private JTable transferTable;
     private JTable withdrawTable;
     private JTable transactionTable;
-    private final String[] customerColumns = {"Customer ID", "Name", "Email", "Phone"}; // Define once at class level
+    private final String[] customerColumns = {"Customer ID", "Name", "Email", "Phone"};
 
     public AdminDashboardUI(bankingsystemfinal.AdminDashboard adminDashboard) {
         this.adminDashboard = adminDashboard;
@@ -104,7 +104,10 @@ public class AdminDashboardUI extends JFrame {
         JPanel customerPanel = new JPanel(new BorderLayout());
         customerPanel.setBackground(new Color(245, 245, 245));
         customerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        DefaultTableModel customerModel = new DefaultTableModel(customerColumns, 0);
+        DefaultTableModel customerModel = new DefaultTableModel(customerColumns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; } // Disable editing for all columns
+        };
         JTable customerTable = new JTable(customerModel);
         customerTable.setBackground(Color.WHITE);
         customerTable.setForeground(Color.BLACK);
@@ -119,7 +122,10 @@ public class AdminDashboardUI extends JFrame {
         transactionPanel.setBackground(new Color(245, 245, 245));
         transactionPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         String[] transactionColumns = {"Account ID From", "Account ID To", "Type", "Amount", "Timestamp", "Status"};
-        DefaultTableModel transactionModel = new DefaultTableModel(transactionColumns, 0);
+        DefaultTableModel transactionModel = new DefaultTableModel(transactionColumns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; } // Disable editing for all columns
+        };
         transactionTable = new JTable(transactionModel);
         transactionTable.setBackground(Color.WHITE);
         transactionTable.setForeground(Color.BLACK);
@@ -132,7 +138,7 @@ public class AdminDashboardUI extends JFrame {
         exportTransactionButton.setBackground(new Color(25, 118, 210));
         exportTransactionButton.setForeground(Color.WHITE);
         exportTransactionButton.setFocusPainted(false);
-        exportTransactionButton.setPreferredSize(new Dimension(120, 30)); // Smaller size
+        exportTransactionButton.setPreferredSize(new Dimension(120, 30));
         exportTransactionButton.addActionListener(e -> exportTransactionHistoryToPDF());
         transactionPanel.add(exportTransactionButton, BorderLayout.SOUTH);
 
@@ -146,7 +152,7 @@ public class AdminDashboardUI extends JFrame {
         String[] depositColumns = {"Account ID", "Amount", "Timestamp", "Status", "Action"};
         DefaultTableModel depositModel = new DefaultTableModel(depositColumns, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return column == 4; }
+            public boolean isCellEditable(int row, int column) { return column == 4; } // Only "Action" column is editable
         };
         depositTable = new JTable(depositModel);
         depositTable.setBackground(Color.WHITE);
@@ -166,7 +172,7 @@ public class AdminDashboardUI extends JFrame {
         String[] loanColumns = {"Account ID", "Amount", "Loan Type", "Applied Date", "Status", "Action"};
         DefaultTableModel loanModel = new DefaultTableModel(loanColumns, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return column == 5; }
+            public boolean isCellEditable(int row, int column) { return column == 5; } // Only "Action" column is editable
         };
         loanTable = new JTable(loanModel);
         loanTable.setBackground(Color.WHITE);
@@ -182,7 +188,7 @@ public class AdminDashboardUI extends JFrame {
         exportLoanButton.setBackground(new Color(25, 118, 210));
         exportLoanButton.setForeground(Color.WHITE);
         exportLoanButton.setFocusPainted(false);
-        exportLoanButton.setPreferredSize(new Dimension(120, 30)); // Smaller size
+        exportLoanButton.setPreferredSize(new Dimension(120, 30));
         exportLoanButton.addActionListener(e -> exportLoanRequestsToPDF());
         loanPanel.add(exportLoanButton, BorderLayout.SOUTH);
 
@@ -196,7 +202,7 @@ public class AdminDashboardUI extends JFrame {
         String[] transferColumns = {"Account ID From", "Account ID To", "Amount", "Timestamp", "Status", "Action"};
         DefaultTableModel transferModel = new DefaultTableModel(transferColumns, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return column == 5; }
+            public boolean isCellEditable(int row, int column) { return column == 5; } // Only "Action" column is editable
         };
         transferTable = new JTable(transferModel);
         transferTable.setBackground(Color.WHITE);
@@ -216,7 +222,7 @@ public class AdminDashboardUI extends JFrame {
         String[] withdrawColumns = {"Account ID", "Amount", "Timestamp", "Status", "Action"};
         DefaultTableModel withdrawModel = new DefaultTableModel(withdrawColumns, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return column == 4; }
+            public boolean isCellEditable(int row, int column) { return column == 4; } // Only "Action" column is editable
         };
         withdrawTable = new JTable(withdrawModel);
         withdrawTable.setBackground(Color.WHITE);
@@ -235,7 +241,10 @@ public class AdminDashboardUI extends JFrame {
         notificationsPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         // Customer Selection Table
-        DefaultTableModel customerModelForNotifications = new DefaultTableModel(customerColumns, 0);
+        DefaultTableModel customerModelForNotifications = new DefaultTableModel(customerColumns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; } // Disable editing for all columns
+        };
         JTable customerTableForNotifications = new JTable(customerModelForNotifications);
         customerTableForNotifications.setBackground(Color.WHITE);
         customerTableForNotifications.setForeground(Color.BLACK);
@@ -261,7 +270,7 @@ public class AdminDashboardUI extends JFrame {
                 if (!message.isEmpty()) {
                     if (adminDashboard.sendNotification(customerId, message)) {
                         JOptionPane.showMessageDialog(notificationsPanel, "Notification sent successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-                        messageArea.setText(""); // Clear the text area
+                        messageArea.setText("");
                     } else {
                         JOptionPane.showMessageDialog(notificationsPanel, "Failed to send notification.", "Error", JOptionPane.ERROR_MESSAGE);
                     }
@@ -307,7 +316,7 @@ public class AdminDashboardUI extends JFrame {
         for (bankingsystemfinal.AdminDashboard.TransactionRecord transaction : adminDashboard.getTransactionHistory()) {
             model.addRow(new Object[]{
                     transaction.getAccountIdFrom(),
-                    transaction.getAccountIdTo() == 0 ? "-" : transaction.getAccountIdTo(),
+                    transaction.getAccountIdTo() == 0 ? "-" : String.valueOf(transaction.getAccountIdTo()),
                     transaction.getType(),
                     String.format("%.2f", transaction.getAmount()),
                     transaction.getTimestamp(),
@@ -427,7 +436,7 @@ public class AdminDashboardUI extends JFrame {
                 document.add(new Paragraph("Loan Requests"));
                 document.add(new Paragraph("Date: " + java.time.LocalDateTime.now()));
 
-                Table table = new Table(5); // 5 columns excluding the "Action" column
+                Table table = new Table(5);
                 table.addCell("Account ID");
                 table.addCell("Amount");
                 table.addCell("Loan Type");
