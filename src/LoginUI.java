@@ -1,14 +1,11 @@
 package bankingsystemfinal;
-
 import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.*;
-
-import bankingsystemfinal.AdminDashboardUI;
-import bankingsystemfinal.Admin;
+import java.awt.geom.RoundRectangle2D;
 
 public class LoginUI extends JFrame {
     private JTextField emailField;
@@ -18,427 +15,568 @@ public class LoginUI extends JFrame {
     private bankingsystemfinal.Admin admin;
 
     public LoginUI(bankingsystemfinal.Admin admin) {
-        this.admin = admin != null ? admin : new Admin();
+        this.admin = admin != null ? admin : new bankingsystemfinal.Admin();
         setTitle("FutureBank - Login");
-        setSize(450, 500);
+        setSize(500, 650); // Increased height for better spacing
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        setUndecorated(true); // Remove default window borders for custom styling
+        setUndecorated(true);
+        setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 30, 30)); // Rounded corners
         setLayout(new BorderLayout());
         initComponents();
     }
 
     private void initComponents() {
-        // Futuristic gradient background panel
-        JPanel gradientPanel = new JPanel() {
+        // Futuristic background with animated particles
+        JPanel backgroundPanel = new JPanel() {
+            private final int PARTICLE_COUNT = 50;
+            private final Point[] particles = new Point[PARTICLE_COUNT];
+            private final Color[] particleColors = new Color[PARTICLE_COUNT];
+
+            {
+                // Initialize particles
+                for (int i = 0; i < PARTICLE_COUNT; i++) {
+                    particles[i] = new Point(
+                            (int)(Math.random() * getWidth()),
+                            (int)(Math.random() * getHeight())
+                    );
+                    particleColors[i] = new Color(
+                            0, 255, 150, (int)(Math.random() * 55 + 50)
+                    );
+                }
+
+                // Animation timer
+                new Timer(30, e -> repaint()).start();
+            }
+
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2d = (Graphics2D) g;
-                g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-                int w = getWidth();
-                int h = getHeight();
-                Color color1 = new Color(25, 20, 50); // Deep blue-purple
-                Color color2 = new Color(75, 50, 100); // Lighter purple
-                GradientPaint gp = new GradientPaint(0, 0, color1, w, h, color2);
-                g2d.setPaint(gp);
-                g2d.fillRect(0, 0, w, h);
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                // Add a subtle glowing accent line
-                g2d.setColor(new Color(0, 255, 150, 100)); // Neon green with transparency
-                g2d.setStroke(new BasicStroke(2));
-                g2d.drawLine(20, h - 50, w - 20, h - 50);
+                // Dark gradient background
+                GradientPaint gp = new GradientPaint(
+                        0, 0, new Color(10, 15, 30),
+                        getWidth(), getHeight(), new Color(5, 10, 20)
+                );
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+
+                // Draw connecting lines between particles
+                g2d.setStroke(new BasicStroke(1f));
+                for (int i = 0; i < PARTICLE_COUNT; i++) {
+                    for (int j = i + 1; j < PARTICLE_COUNT; j++) {
+                        double dist = particles[i].distance(particles[j]);
+                        if (dist < 150) {
+                            int alpha = (int)(255 - (dist * 1.7));
+                            if (alpha > 0) {
+                                g2d.setColor(new Color(0, 255, 150, alpha / 2));
+                                g2d.drawLine(particles[i].x, particles[i].y, particles[j].x, particles[j].y);
+                            }
+                        }
+                    }
+                }
+
+                // Draw particles
+                for (int i = 0; i < PARTICLE_COUNT; i++) {
+                    // Update particle position
+                    particles[i].x += (int)(Math.random() * 5 - 2);
+                    particles[i].y += (int)(Math.random() * 5 - 2);
+
+                    // Wrap around screen edges
+                    if (particles[i].x < 0) particles[i].x = getWidth();
+                    if (particles[i].x > getWidth()) particles[i].x = 0;
+                    if (particles[i].y < 0) particles[i].y = getHeight();
+                    if (particles[i].y > getHeight()) particles[i].y = 0;
+
+                    // Draw particle
+                    g2d.setColor(particleColors[i]);
+                    g2d.fillOval(particles[i].x, particles[i].y, 3, 3);
+                }
             }
         };
-        gradientPanel.setLayout(new BorderLayout());
-        gradientPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        backgroundPanel.setLayout(new BorderLayout());
+        backgroundPanel.setBorder(BorderFactory.createEmptyBorder(40, 40, 40, 40));
 
-        // Main login panel with glassmorphism effect
-        JPanel loginPanel = new JPanel(new GridBagLayout());
-        loginPanel.setBackground(new Color(255, 255, 255, 200)); // Translucent white
-        loginPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(0, 255, 150, 50), 2, true), // Neon green outline
-                BorderFactory.createEmptyBorder(20, 20, 20, 20)
-        ));
+        // Glassmorphism panel for login form
+        JPanel loginPanel = new JPanel(new GridBagLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // Create a glass effect with blur
+                int blurRadius = 20;
+                int shadowOffset = 5;
+                int arc = 25;
+
+                // Shadow
+                g2d.setColor(new Color(0, 0, 0, 100));
+                g2d.fillRoundRect(
+                        shadowOffset, shadowOffset,
+                        getWidth() - shadowOffset * 2, getHeight() - shadowOffset * 2,
+                        arc, arc
+                );
+
+                // Glass panel
+                g2d.setColor(new Color(255, 255, 255, 30));
+                g2d.fillRoundRect(
+                        0, 0,
+                        getWidth() - shadowOffset, getHeight() - shadowOffset,
+                        arc, arc
+                );
+
+                // Border
+                g2d.setStroke(new BasicStroke(1.5f));
+                g2d.setColor(new Color(255, 255, 255, 80));
+                g2d.drawRoundRect(
+                        0, 0,
+                        getWidth() - shadowOffset, getHeight() - shadowOffset,
+                        arc, arc
+                );
+
+                g2d.dispose();
+            }
+        };
         loginPanel.setOpaque(false);
+        loginPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(15, 15, 15, 15);
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.CENTER;
 
-        // Title
-        JLabel titleLabel = new JLabel("FutureBank Login");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 28));
-        titleLabel.setForeground(new Color(0, 255, 150)); // Neon green
+        // Title with futuristic font
+        JLabel titleLabel = new JLabel("FUTUREBANK");
+        try {
+            Font customFont = Font.createFont(Font.TRUETYPE_FONT, getClass().getResourceAsStream("/fonts/futuristic.ttf"))
+                    .deriveFont(Font.BOLD, 36f);
+            titleLabel.setFont(customFont);
+        } catch (Exception e) {
+            titleLabel.setFont(new Font("Arial", Font.BOLD, 36)); // Fallback
+        }
+        titleLabel.setForeground(new Color(0, 255, 180));
         gbc.gridwidth = 2;
         gbc.gridx = 0;
         gbc.gridy = 0;
         loginPanel.add(titleLabel, gbc);
 
-        // Email Label and Field
-        JLabel emailLabel = new JLabel("Email:");
-        emailLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        emailLabel.setForeground(Color.WHITE);
-        gbc.gridwidth = 1;
-        gbc.gridx = 0;
+        // Subtitle
+        JLabel subtitleLabel = new JLabel("Quantum Financial Gateway");
+        subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        subtitleLabel.setForeground(new Color(200, 200, 200));
         gbc.gridy = 1;
-        loginPanel.add(emailLabel, gbc);
+        loginPanel.add(subtitleLabel, gbc);
 
-        emailField = new JTextField(20);
-        emailField.setFont(new Font("Arial", Font.PLAIN, 16));
-        emailField.setBackground(new Color(255, 255, 255, 180));
-        emailField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(0, 255, 150, 100), 2, true),
-                BorderFactory.createEmptyBorder(8, 10, 8, 10)
-        ));
-        gbc.gridx = 1;
-        gbc.gridy = 1;
+        // Email Field
+        emailField = createFuturisticTextField("Email Address");
+        gbc.gridy = 2;
         loginPanel.add(emailField, gbc);
 
-        // Password Label and Field
-        JLabel passwordLabel = new JLabel("Password:");
-        passwordLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        passwordLabel.setForeground(Color.WHITE);
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        loginPanel.add(passwordLabel, gbc);
-
-        passwordField = new JPasswordField(20);
-        passwordField.setFont(new Font("Arial", Font.PLAIN, 16));
-        passwordField.setBackground(new Color(255, 255, 255, 180));
-        passwordField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(0, 255, 150, 100), 2, true),
-                BorderFactory.createEmptyBorder(8, 10, 8, 10)
-        ));
-        gbc.gridx = 1;
-        gbc.gridy = 2;
+        // Password Field
+        passwordField = createFuturisticPasswordField("Password");
+        gbc.gridy = 3;
         loginPanel.add(passwordField, gbc);
 
-        // Role Selection
+        // Role Selection with modern toggle
+        JPanel rolePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
+        rolePanel.setOpaque(false);
+
         ButtonGroup roleGroup = new ButtonGroup();
-        customerRadio = new JRadioButton("Customer");
-        adminRadio = new JRadioButton("Admin");
-        customerRadio.setFont(new Font("Arial", Font.PLAIN, 16));
-        adminRadio.setFont(new Font("Arial", Font.PLAIN, 16));
-        customerRadio.setForeground(Color.WHITE);
-        adminRadio.setForeground(Color.WHITE);
-        customerRadio.setOpaque(false);
-        adminRadio.setOpaque(false);
+        customerRadio = createToggleButton("CUSTOMER", true);
+        adminRadio = createToggleButton("ADMIN", false);
+
         roleGroup.add(customerRadio);
         roleGroup.add(adminRadio);
-        customerRadio.setSelected(true);
 
-        JPanel rolePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        rolePanel.setOpaque(false);
         rolePanel.add(customerRadio);
         rolePanel.add(adminRadio);
-        gbc.gridx = 0;
-        gbc.gridy = 3;
-        gbc.gridwidth = 2;
+
+        gbc.gridy = 4;
         loginPanel.add(rolePanel, gbc);
 
-        // Login Button
-        JButton loginButton = new JButton("Login");
-        loginButton.setFont(new Font("Arial", Font.BOLD, 16));
-        loginButton.setBackground(new Color(0, 120, 215));
-        loginButton.setForeground(Color.WHITE);
-        loginButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-        loginButton.setFocusPainted(false);
-        loginButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        loginButton.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                loginButton.setBackground(new Color(0, 150, 255));
-                loginButton.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(new Color(0, 255, 150, 150), 3, true),
-                        BorderFactory.createEmptyBorder(8, 18, 8, 18)
-                ));
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                loginButton.setBackground(new Color(0, 120, 215));
-                loginButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-            }
-        });
-        gbc.gridx = 0;
-        gbc.gridy = 4;
-        gbc.gridwidth = 2;
+        // Login Button with hover effect
+        JButton loginButton = new JButton("AUTHENTICATE");
+        styleFuturisticButton(loginButton);
+        loginButton.addActionListener(e -> handleLogin());
+        gbc.gridy = 5;
         loginPanel.add(loginButton, gbc);
 
-        loginButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String email = emailField.getText();
-                String password = new String(passwordField.getPassword());
+        // Register Button
+        JButton registerButton = new JButton("NEW USER? REGISTER");
+        registerButton.setForeground(new Color(200, 200, 200));
+        registerButton.setContentAreaFilled(false);
+        registerButton.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        registerButton.setFont(new Font("Arial", Font.PLAIN, 12));
+        registerButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        registerButton.addActionListener(e -> showRegistrationDialog());
+        gbc.gridy = 6;
+        loginPanel.add(registerButton, gbc);
 
-                if (customerRadio.isSelected()) {
-                    if (Customer.validateCustomerLogin(email, password)) {
-                        int customerId = Customer.getCustomerId(email);
-                        if (customerId != -1) {
-                            new bankingsystemfinal.CustomerDashboardUI(new bankingsystemfinal.CustomerDashboard(customerId)).setVisible(true);
-                            dispose();
-                        }
-                    } else {
-                        JOptionPane.showMessageDialog(LoginUI.this, "Invalid email or password.");
-                    }
-                } else if (adminRadio.isSelected()) {
-                    if (admin.validateAdminLogin(email, password)) {
-                        int adminId = admin.getAdminId(email);
-                        if (adminId != -1) {
-                            bankingsystemfinal.Admin.AdminRecord adminRecord = new bankingsystemfinal.Admin.AdminRecord(adminId, email);
-                            new AdminDashboardUI(new bankingsystemfinal.AdminDashboard()).setVisible(true);
-                            dispose();
-                        }
-                    } else {
-                        JOptionPane.showMessageDialog(LoginUI.this, "Invalid email or password.");
-                    }
+        // Add components to background
+        backgroundPanel.add(loginPanel, BorderLayout.CENTER);
+        add(backgroundPanel, BorderLayout.CENTER);
+
+        // Custom window controls
+        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        controlPanel.setOpaque(false);
+
+        JButton minimizeButton = createControlButton("−", new Color(255, 204, 0));
+        minimizeButton.addActionListener(e -> setState(Frame.ICONIFIED));
+
+        JButton closeButton = createControlButton("×", new Color(255, 50, 50));
+        closeButton.addActionListener(e -> System.exit(0));
+
+        controlPanel.add(minimizeButton);
+        controlPanel.add(closeButton);
+
+        add(controlPanel, BorderLayout.NORTH);
+    }
+
+    private JTextField createFuturisticTextField(String placeholder) {
+        JTextField field = new JTextField(20);
+        field.setFont(new Font("Arial", Font.PLAIN, 16));
+        field.setForeground(Color.WHITE);
+        field.setCaretColor(new Color(0, 255, 180));
+        field.setOpaque(false);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(0, 255, 180, 100)),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
+
+        // Placeholder effect
+        field.setText(placeholder);
+        field.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (field.getText().equals(placeholder)) {
+                    field.setText("");
+                }
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (field.getText().isEmpty()) {
+                    field.setText(placeholder);
                 }
             }
         });
 
-        // Register Button
-        JButton registerButton = new JButton("Register");
-        registerButton.setFont(new Font("Arial", Font.BOLD, 16));
-        registerButton.setBackground(new Color(0, 180, 100));
-        registerButton.setForeground(Color.WHITE);
-        registerButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-        registerButton.setFocusPainted(false);
-        registerButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        registerButton.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                registerButton.setBackground(new Color(0, 200, 120));
-                registerButton.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(new Color(0, 255, 150, 150), 3, true),
-                        BorderFactory.createEmptyBorder(8, 18, 8, 18)
-                ));
+        return field;
+    }
+
+    private JPasswordField createFuturisticPasswordField(String placeholder) {
+        JPasswordField field = new JPasswordField(20);
+        field.setFont(new Font("Arial", Font.PLAIN, 16));
+        field.setForeground(Color.WHITE);
+        field.setCaretColor(new Color(0, 255, 180));
+        field.setOpaque(false);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(0, 255, 180, 100)),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
+
+        // Placeholder effect
+        field.setEchoChar((char)0);
+        field.setText(placeholder);
+        field.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (new String(field.getPassword()).equals(placeholder)) {
+                    field.setText("");
+                    field.setEchoChar('•');
+                }
             }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                registerButton.setBackground(new Color(0, 180, 100));
-                registerButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (field.getPassword().length == 0) {
+                    field.setEchoChar((char)0);
+                    field.setText(placeholder);
+                }
             }
         });
-        gbc.gridx = 0;
-        gbc.gridy = 5;
+
+        return field;
+    }
+
+    private JRadioButton createToggleButton(String text, boolean selected) {
+        JRadioButton button = new JRadioButton(text);
+        button.setFont(new Font("Arial", Font.BOLD, 14));
+        button.setForeground(selected ? new Color(0, 255, 180) : new Color(150, 150, 150));
+        button.setOpaque(false);
+        button.setSelected(selected);
+        button.setFocusPainted(false);
+        button.setContentAreaFilled(false);
+        button.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        button.addItemListener(e -> {
+            button.setForeground(button.isSelected() ? new Color(0, 255, 180) : new Color(150, 150, 150));
+        });
+
+        return button;
+    }
+
+    private void styleFuturisticButton(JButton button) {
+        button.setFont(new Font("Arial", Font.BOLD, 16));
+        button.setForeground(Color.WHITE);
+        button.setBackground(new Color(0, 180, 130));
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0, 255, 180, 100), 2),
+                BorderFactory.createEmptyBorder(15, 40, 15, 40)
+        ));
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(new Color(0, 220, 160));
+                button.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(new Color(0, 255, 180), 2),
+                        BorderFactory.createEmptyBorder(15, 40, 15, 40)
+                ));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(new Color(0, 180, 130));
+                button.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(new Color(0, 255, 180, 100), 2),
+                        BorderFactory.createEmptyBorder(15, 40, 15, 40)
+                ));
+            }
+        });
+    }
+
+    private JButton createControlButton(String text, Color color) {
+        JButton button = new JButton(text);
+        button.setFont(new Font("Arial", Font.BOLD, 14));
+        button.setForeground(Color.WHITE);
+        button.setBackground(color);
+        button.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(color.brighter());
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(color);
+            }
+        });
+
+        return button;
+    }
+
+    private void handleLogin() {
+        String email = emailField.getText();
+        String password = new String(passwordField.getPassword());
+
+        // Skip if fields contain placeholder text
+        if (email.equals("Email Address") || new String(passwordField.getPassword()).equals("Password")) {
+            JOptionPane.showMessageDialog(this, "Please enter your credentials", "Input Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        if (customerRadio.isSelected()) {
+            if (bankingsystemfinal.Customer.validateCustomerLogin(email, password)) {
+                int customerId = bankingsystemfinal.Customer.getCustomerId(email);
+                if (customerId != -1) {
+                    new bankingsystemfinal.CustomerDashboardUI(new bankingsystemfinal.CustomerDashboard(customerId)).setVisible(true);
+                    dispose();
+                }
+            } else {
+                showErrorAnimation();
+                JOptionPane.showMessageDialog(this, "Invalid email or password", "Authentication Failed", JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (adminRadio.isSelected()) {
+            if (admin.validateAdminLogin(email, password)) {
+                int adminId = admin.getAdminId(email);
+                if (adminId != -1) {
+                    bankingsystemfinal.Admin.AdminRecord adminRecord = new bankingsystemfinal.Admin.AdminRecord(adminId, email);
+                    new bankingsystemfinal.AdminDashboardUI(new bankingsystemfinal.AdminDashboard()).setVisible(true);
+                    dispose();
+                }
+            } else {
+                showErrorAnimation();
+                JOptionPane.showMessageDialog(this, "Invalid email or password", "Authentication Failed", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void showErrorAnimation() {
+        // Create a shaking animation for invalid login
+        Timer timer = new Timer(10, null);
+        final int[] x = {getX()};
+        final int offset = 10;
+        final int[] direction = {1};
+        final int[] shakes = {0};
+
+        timer.addActionListener(e -> {
+            x[0] += 5 * direction[0];
+            setLocation(x[0], getY());
+
+            if (Math.abs(x[0] - getX()) >= offset) {
+                direction[0] *= -1;
+                shakes[0]++;
+            }
+
+            if (shakes[0] >= 6) {
+                timer.stop();
+                setLocation(x[0], getY());
+            }
+        });
+
+        timer.start();
+    }
+
+    private void showRegistrationDialog() {
+        JDialog registerDialog = new JDialog(this, "Register", true);
+        registerDialog.setSize(450, 600);
+        registerDialog.setLocationRelativeTo(this);
+        registerDialog.setUndecorated(true);
+        registerDialog.setShape(new RoundRectangle2D.Double(0, 0, 450, 600, 30, 30));
+
+        // Glass panel for dialog
+        JPanel dialogPanel = new JPanel(new GridBagLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // Glass effect
+                g2d.setColor(new Color(30, 35, 50, 220));
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
+
+                // Border
+                g2d.setStroke(new BasicStroke(2f));
+                g2d.setColor(new Color(0, 255, 180, 100));
+                g2d.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 30, 30);
+
+                g2d.dispose();
+            }
+        };
+        dialogPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.CENTER;
+
+        // Title
+        JLabel titleLabel = new JLabel("CREATE ACCOUNT");
+        try {
+            Font customFont = Font.createFont(Font.TRUETYPE_FONT, getClass().getResourceAsStream("/fonts/futuristic.ttf"))
+                    .deriveFont(Font.BOLD, 24f);
+            titleLabel.setFont(customFont);
+        } catch (Exception e) {
+            titleLabel.setFont(new Font("Arial", Font.BOLD, 24)); // Fallback
+        }
+        titleLabel.setForeground(new Color(0, 255, 180));
         gbc.gridwidth = 2;
-        loginPanel.add(registerButton, gbc);
+        gbc.gridy = 0;
+        dialogPanel.add(titleLabel, gbc);
 
-        registerButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // Create a custom registration dialog
-                JDialog registerDialog = new JDialog(LoginUI.this, "Register", true);
-                registerDialog.setLayout(new BorderLayout());
-                registerDialog.setSize(400, 400); // Adjusted height for compact layout
-                registerDialog.setLocationRelativeTo(LoginUI.this);
-                registerDialog.setUndecorated(true);
+        // Form fields
+        JTextField nameField = createFuturisticTextField("Full Name");
+        gbc.gridy = 1;
+        dialogPanel.add(nameField, gbc);
 
-                // Glassmorphism panel for registration
-                JPanel dialogPanel = new JPanel(new GridBagLayout());
-                dialogPanel.setBackground(new Color(240, 240, 240, 200)); // Light gray with transparency
-                dialogPanel.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(new Color(0, 255, 150, 50), 2, true),
-                        BorderFactory.createEmptyBorder(10, 10, 10, 10) // Reduced overall padding
-                ));
-                dialogPanel.setOpaque(false);
+        JTextField emailField = createFuturisticTextField("Email Address");
+        gbc.gridy = 2;
+        dialogPanel.add(emailField, gbc);
 
-                GridBagConstraints dialogGbc = new GridBagConstraints();
-                dialogGbc.insets = new Insets(5, 10, 5, 10); // Reduced spacing between fields
-                dialogGbc.fill = GridBagConstraints.HORIZONTAL;
-                dialogGbc.anchor = GridBagConstraints.CENTER;
+        JPasswordField passwordField = createFuturisticPasswordField("Password");
+        gbc.gridy = 3;
+        dialogPanel.add(passwordField, gbc);
 
-                JLabel regTitleLabel = new JLabel("Register");
-                regTitleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-                regTitleLabel.setForeground(new Color(0, 255, 150)); // Neon green
-                dialogGbc.gridwidth = 2;
-                dialogGbc.gridx = 0;
-                dialogGbc.gridy = 0;
-                dialogPanel.add(regTitleLabel, dialogGbc);
+        JTextField phoneField = createFuturisticTextField("Phone Number");
+        gbc.gridy = 4;
+        dialogPanel.add(phoneField, gbc);
 
-                JTextField nameField = new JTextField(20);
-                nameField.setFont(new Font("Arial", Font.PLAIN, 16));
-                nameField.setBackground(new Color(255, 255, 255, 180));
-                nameField.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(new Color(0, 255, 150, 100), 2, true),
-                        BorderFactory.createEmptyBorder(5, 10, 5, 10)
-                ));
+        // Account type selector
+        JComboBox<String> accountTypeCombo = new JComboBox<>(new String[]{"Savings", "Current"});
+        accountTypeCombo.setFont(new Font("Arial", Font.PLAIN, 16));
+        accountTypeCombo.setForeground(Color.WHITE);
+        accountTypeCombo.setBackground(new Color(30, 35, 50));
+        accountTypeCombo.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0, 255, 180, 100), 1),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
+        gbc.gridy = 5;
+        dialogPanel.add(accountTypeCombo, gbc);
 
-                JTextField emailFieldReg = new JTextField(20);
-                emailFieldReg.setFont(new Font("Arial", Font.PLAIN, 16));
-                emailFieldReg.setBackground(new Color(255, 255, 255, 180));
-                emailFieldReg.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(new Color(0, 255, 150, 100), 2, true),
-                        BorderFactory.createEmptyBorder(5, 10, 5, 10)
-                ));
+        // Submit button
+        JButton submitButton = new JButton("REGISTER ACCOUNT");
+        styleFuturisticButton(submitButton);
+        submitButton.addActionListener(e -> {
+            String name = nameField.getText();
+            String email = emailField.getText();
+            String password = new String(passwordField.getPassword());
+            String phone = phoneField.getText();
+            String accountType = (String) accountTypeCombo.getSelectedItem();
 
-                JPasswordField passwordFieldReg = new JPasswordField(20);
-                passwordFieldReg.setFont(new Font("Arial", Font.PLAIN, 16));
-                passwordFieldReg.setBackground(new Color(255, 255, 255, 180));
-                passwordFieldReg.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(new Color(0, 255, 150, 100), 2, true),
-                        BorderFactory.createEmptyBorder(5, 10, 5, 10)
-                ));
+            // Validate inputs
+            if (name.isEmpty() || name.equals("Full Name") ||
+                    email.isEmpty() || email.equals("Email Address") ||
+                    password.isEmpty() || new String(passwordField.getPassword()).equals("Password") ||
+                    phone.isEmpty() || phone.equals("Phone Number")) {
 
-                JTextField phoneField = new JTextField(20);
-                phoneField.setFont(new Font("Arial", Font.PLAIN, 16));
-                phoneField.setBackground(new Color(255, 255, 255, 180));
-                phoneField.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(new Color(0, 255, 150, 100), 2, true),
-                        BorderFactory.createEmptyBorder(5, 10, 5, 10)
-                ));
+                JOptionPane.showMessageDialog(registerDialog,
+                        "All fields are required",
+                        "Input Error",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
 
-                JComboBox<String> accountTypeCombo = new JComboBox<>(new String[]{"Savings", "Current"});
-                accountTypeCombo.setFont(new Font("Arial", Font.PLAIN, 16));
-                accountTypeCombo.setBackground(new Color(255, 255, 255, 180));
-                accountTypeCombo.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(new Color(0, 255, 150, 100), 2, true),
-                        BorderFactory.createEmptyBorder(5, 5, 5, 5)
-                ));
-
-                JLabel nameLabel = new JLabel("Name:");
-                nameLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-                nameLabel.setForeground(Color.BLACK);
-                JLabel emailLabelReg = new JLabel("Email:");
-                emailLabelReg.setFont(new Font("Arial", Font.PLAIN, 16));
-                emailLabelReg.setForeground(Color.BLACK);
-                JLabel passwordLabelReg = new JLabel("Password:");
-                passwordLabelReg.setFont(new Font("Arial", Font.PLAIN, 16));
-                passwordLabelReg.setForeground(Color.BLACK);
-                JLabel phoneLabel = new JLabel("Phone Number:");
-                phoneLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-                phoneLabel.setForeground(Color.BLACK);
-                JLabel accountTypeLabel = new JLabel("Account Type:");
-                accountTypeLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-                accountTypeLabel.setForeground(Color.BLACK);
-
-                dialogGbc.gridwidth = 1;
-                dialogGbc.gridx = 0;
-                dialogGbc.gridy = 1;
-                dialogPanel.add(nameLabel, dialogGbc);
-                dialogGbc.gridx = 1;
-                dialogPanel.add(nameField, dialogGbc);
-
-                dialogGbc.gridx = 0;
-                dialogGbc.gridy = 2;
-                dialogPanel.add(emailLabelReg, dialogGbc);
-                dialogGbc.gridx = 1;
-                dialogPanel.add(emailFieldReg, dialogGbc);
-
-                dialogGbc.gridx = 0;
-                dialogGbc.gridy = 3;
-                dialogPanel.add(passwordLabelReg, dialogGbc);
-                dialogGbc.gridx = 1;
-                dialogPanel.add(passwordFieldReg, dialogGbc);
-
-                dialogGbc.gridx = 0;
-                dialogGbc.gridy = 4;
-                dialogPanel.add(phoneLabel, dialogGbc);
-                dialogGbc.gridx = 1;
-                dialogPanel.add(phoneField, dialogGbc);
-
-                dialogGbc.gridx = 0;
-                dialogGbc.gridy = 5;
-                dialogPanel.add(accountTypeLabel, dialogGbc);
-                dialogGbc.gridx = 1;
-                dialogPanel.add(accountTypeCombo, dialogGbc);
-
-                JButton submitButton = new JButton("Submit");
-                submitButton.setFont(new Font("Arial", Font.BOLD, 16));
-                submitButton.setBackground(new Color(0, 180, 100));
-                submitButton.setForeground(Color.WHITE);
-                submitButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-                submitButton.setFocusPainted(false);
-                submitButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                submitButton.addMouseListener(new java.awt.event.MouseAdapter() {
-                    public void mouseEntered(java.awt.event.MouseEvent evt) {
-                        submitButton.setBackground(new Color(0, 200, 120));
-                        submitButton.setBorder(BorderFactory.createCompoundBorder(
-                                BorderFactory.createLineBorder(new Color(0, 255, 150, 150), 3, true),
-                                BorderFactory.createEmptyBorder(8, 18, 8, 18)
-                        ));
-                    }
-                    public void mouseExited(java.awt.event.MouseEvent evt) {
-                        submitButton.setBackground(new Color(0, 180, 100));
-                        submitButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-                    }
-                });
-                dialogGbc.gridx = 0;
-                dialogGbc.gridy = 6;
-                dialogGbc.gridwidth = 2;
-                dialogPanel.add(submitButton, dialogGbc);
-
-                submitButton.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent event) {
-                        String name = nameField.getText();
-                        String email = emailFieldReg.getText();
-                        String password = new String(passwordFieldReg.getPassword());
-                        String phoneNumber = phoneField.getText();
-                        String accountType = (String) accountTypeCombo.getSelectedItem();
-
-                        if (name.isEmpty() || email.isEmpty() || password.isEmpty() || phoneNumber.isEmpty()) {
-                            JOptionPane.showMessageDialog(registerDialog, "All fields are required.");
-                            return;
-                        }
-
-                        if (Customer.registerCustomer(name, email, password, phoneNumber)) {
-                            int customerId = Customer.getCustomerId(email);
-                            if (customerId != -1) {
-                                if (createAccount(customerId, accountType)) {
-                                    JOptionPane.showMessageDialog(registerDialog, "Registration and account creation successful!");
-                                    registerDialog.dispose();
-                                } else {
-                                    JOptionPane.showMessageDialog(registerDialog, "Registration succeeded, but account creation failed. Check console for details.");
-                                    registerDialog.dispose();
-                                }
-                            }
-                        } else {
-                            JOptionPane.showMessageDialog(registerDialog, "Registration failed. Email may already exist.");
-                        }
-                    }
-                });
-
-                registerDialog.add(dialogPanel, BorderLayout.CENTER);
-                JPanel closePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-                closePanel.setOpaque(false);
-                JButton closeDialogButton = new JButton("X");
-                closeDialogButton.setFont(new Font("Arial", Font.BOLD, 14));
-                closeDialogButton.setForeground(Color.WHITE);
-                closeDialogButton.setBackground(new Color(255, 99, 71));
-                closeDialogButton.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-                closeDialogButton.setFocusPainted(false);
-                closeDialogButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                closeDialogButton.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent evt) {
+            if (bankingsystemfinal.Customer.registerCustomer(name, email, password, phone)) {
+                int customerId = bankingsystemfinal.Customer.getCustomerId(email);
+                if (customerId != -1) {
+                    if (createAccount(customerId, accountType)) {
+                        JOptionPane.showMessageDialog(registerDialog,
+                                "Registration successful!\nYour account has been created.",
+                                "Success",
+                                JOptionPane.INFORMATION_MESSAGE);
                         registerDialog.dispose();
+                    } else {
+                        JOptionPane.showMessageDialog(registerDialog,
+                                "Account creation failed",
+                                "Error",
+                                JOptionPane.ERROR_MESSAGE);
                     }
-                });
-                closePanel.add(closeDialogButton);
-                registerDialog.add(closePanel, BorderLayout.NORTH);
-                registerDialog.setVisible(true);
+                }
+            } else {
+                JOptionPane.showMessageDialog(registerDialog,
+                        "Registration failed. Email may already exist.",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
             }
         });
+        gbc.gridy = 6;
+        dialogPanel.add(submitButton, gbc);
 
-        gradientPanel.add(loginPanel, BorderLayout.CENTER);
-        add(gradientPanel, BorderLayout.CENTER);
-
-        // Custom close button
-        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        topPanel.setOpaque(false);
-        JButton closeButton = new JButton("X");
-        closeButton.setFont(new Font("Arial", Font.BOLD, 14));
-        closeButton.setForeground(Color.WHITE);
-        closeButton.setBackground(new Color(255, 99, 71));
-        closeButton.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-        closeButton.setFocusPainted(false);
+        // Close button
+        JButton closeButton = new JButton("CLOSE");
+        closeButton.setFont(new Font("Arial", Font.BOLD, 12));
+        closeButton.setForeground(new Color(200, 200, 200));
+        closeButton.setContentAreaFilled(false);
+        closeButton.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         closeButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        closeButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evt) {
-                System.exit(0);
-            }
-        });
-        topPanel.add(closeButton);
-        add(topPanel, BorderLayout.NORTH);
+        closeButton.addActionListener(e -> registerDialog.dispose());
+        gbc.gridy = 7;
+        dialogPanel.add(closeButton, gbc);
+
+        registerDialog.add(dialogPanel);
+        registerDialog.setVisible(true);
     }
 
     private boolean createAccount(int customerId, String accountType) {
@@ -475,10 +613,16 @@ public class LoginUI extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                new LoginUI(new Admin());
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Set modern look and feel
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+
+                // Create and show the login UI
+                LoginUI loginUI = new LoginUI(new bankingsystemfinal.Admin());
+                loginUI.setVisible(true);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         });
     }
