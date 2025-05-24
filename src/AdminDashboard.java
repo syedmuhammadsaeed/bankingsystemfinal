@@ -116,14 +116,13 @@ public class AdminDashboard {
         if (conn == null) return transactions;
 
         try {
-            // Fetch completed transactions
             String sqlTransactions = "SELECT * FROM transactions";
             PreparedStatement stmtTransactions = conn.prepareStatement(sqlTransactions);
             ResultSet rsTransactions = stmtTransactions.executeQuery();
             while (rsTransactions.next()) {
                 transactions.add(new TransactionRecord(
                         rsTransactions.getInt("account_id"),
-                        0, // No "Account ID To" for regular transactions
+                        0,
                         rsTransactions.getString("type"),
                         rsTransactions.getDouble("amount"),
                         rsTransactions.getString("timestamp"),
@@ -132,14 +131,13 @@ public class AdminDashboard {
             }
             stmtTransactions.close();
 
-            // Fetch deposit requests
             String sqlDeposits = "SELECT * FROM deposit_requests";
             PreparedStatement stmtDeposits = conn.prepareStatement(sqlDeposits);
             ResultSet rsDeposits = stmtDeposits.executeQuery();
             while (rsDeposits.next()) {
                 transactions.add(new TransactionRecord(
                         rsDeposits.getInt("account_id"),
-                        0, // No "Account ID To" for deposits
+                        0,
                         "Deposit Request",
                         rsDeposits.getDouble("amount"),
                         rsDeposits.getString("timestamp"),
@@ -148,14 +146,13 @@ public class AdminDashboard {
             }
             stmtDeposits.close();
 
-            // Fetch withdraw requests
             String sqlWithdraws = "SELECT * FROM withdraw_requests";
             PreparedStatement stmtWithdraws = conn.prepareStatement(sqlWithdraws);
             ResultSet rsWithdraws = stmtWithdraws.executeQuery();
             while (rsWithdraws.next()) {
                 transactions.add(new TransactionRecord(
                         rsWithdraws.getInt("account_id"),
-                        0, // No "Account ID To" for withdraws
+                        0,
                         "Withdraw Request",
                         rsWithdraws.getDouble("amount"),
                         rsWithdraws.getString("timestamp"),
@@ -164,7 +161,6 @@ public class AdminDashboard {
             }
             stmtWithdraws.close();
 
-            // Fetch transfer requests
             String sqlTransfers = "SELECT * FROM transfers";
             PreparedStatement stmtTransfers = conn.prepareStatement(sqlTransfers);
             ResultSet rsTransfers = stmtTransfers.executeQuery();
@@ -357,7 +353,6 @@ public class AdminDashboard {
         try {
             conn.setAutoCommit(false);
 
-            // Check account balance
             String checkBalanceSql = "SELECT balance FROM accounts WHERE account_id = ?";
             PreparedStatement checkStmt = conn.prepareStatement(checkBalanceSql);
             checkStmt.setInt(1, accountId);
@@ -370,7 +365,6 @@ public class AdminDashboard {
             }
             checkStmt.close();
 
-            // Update withdraw request status
             String updateRequestSql = "UPDATE withdraw_requests SET status = ?, admin_id = ? WHERE account_id = ? AND amount = ? AND status = 'Pending'";
             PreparedStatement updateStmt = conn.prepareStatement(updateRequestSql);
             updateStmt.setString(1, "Approved");
@@ -386,7 +380,6 @@ public class AdminDashboard {
                 return false;
             }
 
-            // Update account balance
             String updateBalanceSql = "UPDATE accounts SET balance = balance - ? WHERE account_id = ?";
             PreparedStatement balanceStmt = conn.prepareStatement(updateBalanceSql);
             balanceStmt.setDouble(1, amount);
@@ -400,7 +393,6 @@ public class AdminDashboard {
                 return false;
             }
 
-            // Record transaction
             String insertTransactionSql = "INSERT INTO transactions (account_id, type, amount, timestamp) VALUES (?, ?, ?, ?)";
             PreparedStatement transactionStmt = conn.prepareStatement(insertTransactionSql);
             transactionStmt.setInt(1, accountId);
@@ -644,5 +636,59 @@ public class AdminDashboard {
 
     public DashboardMetrics getDashboardMetrics() {
         return new DashboardMetrics(0, 0, 0.0);
+    }
+
+    public boolean deleteCustomerAccount(int customerId, int adminId) {
+        Connection conn = bankingsystemfinal.DBConnection.getConnection();
+        if (conn == null) return false;
+
+        try {
+            conn.setAutoCommit(false);
+
+            // First, delete related account records
+            String deleteAccountSql = "DELETE FROM accounts WHERE customer_id = ?";
+            PreparedStatement accountStmt = conn.prepareStatement(deleteAccountSql);
+            accountStmt.setInt(1, customerId);
+            int accountRowsAffected = accountStmt.executeUpdate();
+            accountStmt.close();
+
+            if (accountRowsAffected == 0) {
+                conn.rollback();
+                System.err.println("No accounts found for customer_id: " + customerId);
+                return false;
+            }
+
+            // Then, delete the customer record
+            String deleteCustomerSql = "DELETE FROM customer WHERE customer_id = ?";
+            PreparedStatement customerStmt = conn.prepareStatement(deleteCustomerSql);
+            customerStmt.setInt(1, customerId);
+            int customerRowsAffected = customerStmt.executeUpdate();
+            customerStmt.close();
+
+            if (customerRowsAffected == 0) {
+                conn.rollback();
+                System.err.println("No customer found for customer_id: " + customerId);
+                return false;
+            }
+
+            conn.commit();
+            return true;
+
+        } catch (SQLException e) {
+            try {
+                conn.rollback();
+            } catch (SQLException rollbackEx) {
+                System.err.println("Error rolling back transaction: " + rollbackEx.getMessage());
+            }
+            System.err.println("Error deleting customer account: " + e.getMessage());
+            return false;
+        } finally {
+            try {
+                conn.setAutoCommit(true);
+                conn.close();
+            } catch (SQLException e) {
+                System.err.println("Error closing connection: " + e.getMessage());
+            }
+        }
     }
 }

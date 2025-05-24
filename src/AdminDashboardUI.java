@@ -42,7 +42,6 @@ public class AdminDashboardUI extends JFrame {
         initComponents();
     }
 
-    // Custom JButton class for rounded corners
     private class RoundedButton extends JButton {
         public RoundedButton(String text) {
             super(text);
@@ -87,7 +86,7 @@ public class AdminDashboardUI extends JFrame {
         JLabel userLabel = new JLabel("Admin | ");
         userLabel.setForeground(Color.WHITE);
         RoundedButton logoutButton = new RoundedButton("Logout");
-        logoutButton.setBackground(new Color(220, 20, 60)); // Crimson red for logout
+        logoutButton.setBackground(new Color(220, 20, 60));
         logoutButton.setForeground(Color.WHITE);
         logoutButton.setFont(new Font("Arial", Font.PLAIN, 14));
         logoutButton.setPreferredSize(new Dimension(100, 30));
@@ -113,13 +112,13 @@ public class AdminDashboardUI extends JFrame {
                 new Color(26, 188, 156),
                 new Color(26, 188, 156),
                 new Color(26, 188, 156),
-                new Color(26, 188, 156)  // Turquoise
+                new Color(26, 188, 156)
         };
 
         for (int i = 0; i < menuItems.length; i++) {
             RoundedButton menuButton = new RoundedButton("  " + menuItems[i]);
-            final Color originalColor = buttonColors[i]; // Store the color as final
-            final String menuItem = menuItems[i]; // Store the menu item as final
+            final Color originalColor = buttonColors[i];
+            final String menuItem = menuItems[i];
             menuButton.setFont(new Font("Arial", Font.PLAIN, 16));
             menuButton.setForeground(Color.WHITE);
             menuButton.setBackground(originalColor);
@@ -134,7 +133,7 @@ public class AdminDashboardUI extends JFrame {
 
                 @Override
                 public void mouseExited(MouseEvent e) {
-                    menuButton.setBackground(originalColor); // Use the final variable
+                    menuButton.setBackground(originalColor);
                 }
             });
             menuButton.addActionListener(e -> cardLayout.show(contentPanel, menuItem));
@@ -164,6 +163,35 @@ public class AdminDashboardUI extends JFrame {
         customerTable.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
         JScrollPane customerScroll = new JScrollPane(customerTable);
         customerPanel.add(customerScroll, BorderLayout.CENTER);
+
+        // Add Delete Account Button
+        RoundedButton deleteButton = new RoundedButton("Delete Account");
+        deleteButton.setBackground(new Color(220, 20, 60)); // Red for deletion
+        deleteButton.setForeground(Color.WHITE);
+        deleteButton.setPreferredSize(new Dimension(120, 30));
+        deleteButton.addActionListener(e -> {
+            int selectedRow = customerTable.getSelectedRow();
+            if (selectedRow >= 0) {
+                int customerId = (int) customerTable.getModel().getValueAt(selectedRow, 0);
+                int confirm = JOptionPane.showConfirmDialog(customerPanel,
+                        "Are you sure you want to delete this customer and their account? This action cannot be undone.",
+                        "Confirm Deletion",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    if (adminDashboard.deleteCustomerAccount(customerId, 1)) { // Assuming adminId = 1
+                        JOptionPane.showMessageDialog(customerPanel, "Customer and account deleted successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                        updateCustomerTable(customerTable);
+                    } else {
+                        JOptionPane.showMessageDialog(customerPanel, "Failed to delete customer and account.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            } else {
+                JOptionPane.showMessageDialog(customerPanel, "Please select a customer to delete.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        customerPanel.add(deleteButton, BorderLayout.SOUTH);
+
         updateCustomerTable(customerTable);
         contentPanel.add(customerPanel, "Customer Details");
 
@@ -185,7 +213,6 @@ public class AdminDashboardUI extends JFrame {
         JScrollPane transactionScroll = new JScrollPane(transactionTable);
         transactionPanel.add(transactionScroll, BorderLayout.CENTER);
 
-        // Add Export Button
         RoundedButton exportTransactionButton = new RoundedButton("Export to PDF");
         exportTransactionButton.setBackground(new Color(25, 118, 210));
         exportTransactionButton.setForeground(Color.WHITE);
@@ -238,7 +265,6 @@ public class AdminDashboardUI extends JFrame {
         JScrollPane loanScroll = new JScrollPane(loanTable);
         loanPanel.add(loanScroll, BorderLayout.CENTER);
 
-        // Add Export Button for Loans
         RoundedButton exportLoanButton = new RoundedButton("Export to PDF");
         exportLoanButton.setBackground(new Color(25, 118, 210));
         exportLoanButton.setForeground(Color.WHITE);
@@ -298,7 +324,6 @@ public class AdminDashboardUI extends JFrame {
         notificationsPanel.setBackground(new Color(245, 245, 245));
         notificationsPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // Customer Selection Table
         DefaultTableModel customerModelForNotifications = new DefaultTableModel(customerColumns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -312,7 +337,6 @@ public class AdminDashboardUI extends JFrame {
         JScrollPane customerScrollForNotifications = new JScrollPane(customerTableForNotifications);
         updateCustomerTable(customerTableForNotifications);
 
-        // Message Input and Send Button
         JPanel inputPanel = new JPanel(new BorderLayout());
         JTextArea messageArea = new JTextArea(5, 20);
         messageArea.setLineWrap(true);
@@ -349,7 +373,6 @@ public class AdminDashboardUI extends JFrame {
         notificationsPanel.add(inputPanel, BorderLayout.SOUTH);
         contentPanel.add(notificationsPanel, "Notifications");
 
-        // Add components to frame
         add(headerPanel, BorderLayout.NORTH);
         add(sidebarPanel, BorderLayout.WEST);
         add(contentPanel, BorderLayout.CENTER);
