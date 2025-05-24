@@ -10,6 +10,8 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
@@ -31,7 +33,7 @@ public class CustomerDashboardUI extends JFrame {
     private JButton actionButton;
     private JPanel bottomPanel;
     private JPanel transactionPanel;
-    private JPanel loanPanel; // New panel for loan export button
+    private JPanel loanPanel;
     private String currentTab = "Accounts";
 
     public CustomerDashboardUI(CustomerDashboard dashboard) {
@@ -44,6 +46,33 @@ public class CustomerDashboardUI extends JFrame {
         initComponents();
     }
 
+    // Custom JButton class for rounded corners
+    private class RoundedButton extends JButton {
+        public RoundedButton(String text) {
+            super(text);
+            setOpaque(false);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+            setFocusPainted(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int width = getWidth();
+            int height = getHeight();
+            if (getModel().isRollover()) {
+                g2.setColor(getBackground().brighter());
+            } else {
+                g2.setColor(getBackground());
+            }
+            g2.fillRoundRect(0, 0, width, height, 20, 20);
+            super.paintComponent(g);
+            g2.dispose();
+        }
+    }
+
     private void initComponents() {
         setLayout(new BorderLayout());
 
@@ -54,35 +83,52 @@ public class CustomerDashboardUI extends JFrame {
         sidebarPanel.setPreferredSize(new Dimension(200, 0));
 
         String[] tabs = {"Accounts", "Transactions", "Deposit Request", "Loan Request", "Transfer", "Withdraw Request", "Notifications"};
-        for (String tab : tabs) {
-            JButton tabButton = new JButton("  " + tab);
+        Color[] buttonColors = {
+                new Color(30, 144, 255), // Dodger Blue
+                new Color(46, 204, 113), // Emerald Green
+                new Color(241, 196, 15), // Sunflower Yellow
+                new Color(231, 76, 60),  // Alizarin Red
+                new Color(155, 89, 182), // Amethyst Purple
+                new Color(52, 152, 219), // Peter River Blue
+                new Color(26, 188, 156)  // Turquoise
+        };
+
+        for (int i = 0; i < tabs.length; i++) {
+            RoundedButton tabButton = new RoundedButton("  " + tabs[i]);
+            final Color originalColor = buttonColors[i];
+            final String tab = tabs[i];
             tabButton.setFont(new Font("Arial", Font.PLAIN, 16));
             tabButton.setForeground(Color.WHITE);
-            tabButton.setBackground(new Color(33, 33, 33));
+            tabButton.setBackground(originalColor);
             tabButton.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
             tabButton.setHorizontalAlignment(SwingConstants.LEFT);
-            tabButton.setFocusPainted(false);
-            tabButton.addActionListener(new ActionListener() {
+            tabButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+            tabButton.addMouseListener(new MouseAdapter() {
                 @Override
-                public void actionPerformed(ActionEvent e) {
-                    currentTab = tab;
-                    updateTableForTab(tab);
+                public void mouseEntered(MouseEvent e) {
+                    tabButton.setBackground(tabButton.getBackground().brighter());
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    tabButton.setBackground(originalColor);
                 }
             });
+            tabButton.addActionListener(e -> updateTableForTab(tab));
             sidebarPanel.add(tabButton);
             sidebarPanel.add(Box.createVerticalStrut(5));
         }
 
-        JButton logoutButton = new JButton("Logout");
-        logoutButton.setBackground(new Color(255, 99, 71));
+        RoundedButton logoutButton = new RoundedButton("Logout");
+        logoutButton.setBackground(new Color(220, 20, 60)); // Crimson red
         logoutButton.setForeground(Color.WHITE);
-        logoutButton.setFocusPainted(false);
-        logoutButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                dispose();
-                new bankingsystemfinal.LoginUI(new bankingsystemfinal.Admin()).setVisible(true);
-            }
+        logoutButton.setFont(new Font("Arial", Font.PLAIN, 16));
+        logoutButton.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        logoutButton.setHorizontalAlignment(SwingConstants.LEFT);
+        logoutButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        logoutButton.addActionListener(e -> {
+            dispose();
+            new bankingsystemfinal.LoginUI(new bankingsystemfinal.Admin()).setVisible(true);
         });
         sidebarPanel.add(logoutButton);
         sidebarPanel.add(Box.createVerticalStrut(5));
@@ -119,8 +165,12 @@ public class CustomerDashboardUI extends JFrame {
         amountField = new JTextField(10);
         accountIdToLabel = new JLabel("Account ID To:");
         accountIdToField = new JTextField(10);
-        actionButton = new JButton("Request Deposit");
-        JButton refreshButton = new JButton("Refresh");
+        actionButton = new RoundedButton("Request Deposit");
+        actionButton.setBackground(new Color(25, 118, 210));
+        actionButton.setForeground(Color.WHITE);
+        RoundedButton refreshButton = new RoundedButton("Refresh");
+        refreshButton.setBackground(new Color(25, 118, 210));
+        refreshButton.setForeground(Color.WHITE);
 
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -151,31 +201,19 @@ public class CustomerDashboardUI extends JFrame {
 
         // Transaction-specific panel for Export button
         transactionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton exportTransactionButton = new JButton("Export to PDF");
+        RoundedButton exportTransactionButton = new RoundedButton("Export to PDF");
         exportTransactionButton.setBackground(new Color(25, 118, 210));
         exportTransactionButton.setForeground(Color.WHITE);
-        exportTransactionButton.setFocusPainted(false);
-        exportTransactionButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                exportTransactionsToPDF();
-            }
-        });
+        exportTransactionButton.addActionListener(e -> exportTransactionsToPDF());
         transactionPanel.add(exportTransactionButton);
         transactionPanel.setVisible(false);
 
         // Loan-specific panel for Export button
         loanPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton exportLoanButton = new JButton("Export to PDF");
+        RoundedButton exportLoanButton = new RoundedButton("Export to PDF");
         exportLoanButton.setBackground(new Color(25, 118, 210));
         exportLoanButton.setForeground(Color.WHITE);
-        exportLoanButton.setFocusPainted(false);
-        exportLoanButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                exportLoansToPDF();
-            }
-        });
+        exportLoanButton.addActionListener(e -> exportLoansToPDF());
         loanPanel.add(exportLoanButton);
         loanPanel.setVisible(false);
 
@@ -186,54 +224,46 @@ public class CustomerDashboardUI extends JFrame {
         mainPanel.add(bottomPanel, BorderLayout.SOUTH);
 
         // Action Listeners
-        actionButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                try {
-                    int accountId = Integer.parseInt(accountIdField.getText());
-                    double amount = Double.parseDouble(amountField.getText());
-                    if ("Deposit Request".equals(currentTab)) {
-                        if (dashboard.deposit(accountId, amount)) {
-                            JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Deposit request successful!");
-                            updateTableForTab(currentTab);
-                        } else {
-                            JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error depositing money: Account not found or does not belong to this customer.", "Error", JOptionPane.ERROR_MESSAGE);
-                        }
-                    } else if ("Loan Request".equals(currentTab)) {
-                        if (dashboard.requestLoan(accountId, amount)) {
-                            JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Loan request successful!");
-                            updateTableForTab(currentTab);
-                        } else {
-                            JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error requesting loan: Account not found or does not belong to this customer.", "Error", JOptionPane.ERROR_MESSAGE);
-                        }
-                    } else if ("Transfer".equals(currentTab)) {
-                        int accountIdTo = Integer.parseInt(accountIdToField.getText());
-                        if (dashboard.transfer(accountId, accountIdTo, amount)) {
-                            JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Transfer request successful!");
-                            updateTableForTab(currentTab);
-                        } else {
-                            JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error transferring money: Invalid accounts or insufficient balance.", "Error", JOptionPane.ERROR_MESSAGE);
-                        }
-                    } else if ("Withdraw Request".equals(currentTab)) {
-                        if (dashboard.withdraw(accountId, amount)) {
-                            JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Withdraw request successful!");
-                            updateTableForTab(currentTab);
-                        } else {
-                            JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error requesting withdraw: Account not found or does not belong to this customer.", "Error", JOptionPane.ERROR_MESSAGE);
-                        }
+        actionButton.addActionListener(e -> {
+            try {
+                int accountId = Integer.parseInt(accountIdField.getText());
+                double amount = Double.parseDouble(amountField.getText());
+                if ("Deposit Request".equals(currentTab)) {
+                    if (dashboard.deposit(accountId, amount)) {
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Deposit request successful!");
+                        updateTableForTab(currentTab);
+                    } else {
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error depositing money: Account not found or does not belong to this customer.", "Error", JOptionPane.ERROR_MESSAGE);
                     }
-                } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Invalid input. All fields must be numeric.", "Error", JOptionPane.ERROR_MESSAGE);
+                } else if ("Loan Request".equals(currentTab)) {
+                    if (dashboard.requestLoan(accountId, amount)) {
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Loan request successful!");
+                        updateTableForTab(currentTab);
+                    } else {
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error requesting loan: Account not found or does not belong to this customer.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                } else if ("Transfer".equals(currentTab)) {
+                    int accountIdTo = Integer.parseInt(accountIdToField.getText());
+                    if (dashboard.transfer(accountId, accountIdTo, amount)) {
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Transfer request successful!");
+                        updateTableForTab(currentTab);
+                    } else {
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error transferring money: Invalid accounts or insufficient balance.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                } else if ("Withdraw Request".equals(currentTab)) {
+                    if (dashboard.withdraw(accountId, amount)) {
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Withdraw request successful!");
+                        updateTableForTab(currentTab);
+                    } else {
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error requesting withdraw: Account not found or does not belong to this customer.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Invalid input. All fields must be numeric.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
-        refreshButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                updateTableForTab(currentTab);
-            }
-        });
+        refreshButton.addActionListener(e -> updateTableForTab(currentTab));
 
         add(sidebarPanel, BorderLayout.WEST);
         add(mainPanel, BorderLayout.CENTER);
@@ -437,11 +467,6 @@ public class CustomerDashboardUI extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                new CustomerDashboardUI(new CustomerDashboard(1)).setVisible(true); // Replace 1 with actual customerId
-            }
-        });
+        SwingUtilities.invokeLater(() -> new CustomerDashboardUI(new CustomerDashboard(1)).setVisible(true)); // Replace 1 with actual customerId
     }
 }

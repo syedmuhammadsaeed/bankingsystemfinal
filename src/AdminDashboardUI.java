@@ -1,6 +1,7 @@
 package bankingsystemfinal;
 
 import bankingsystemfinal.AdminDashboard;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
@@ -11,11 +12,13 @@ import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
+
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
+
 import java.io.FileOutputStream;
 import java.io.IOException;
 
@@ -39,6 +42,33 @@ public class AdminDashboardUI extends JFrame {
         initComponents();
     }
 
+    // Custom JButton class for rounded corners
+    private class RoundedButton extends JButton {
+        public RoundedButton(String text) {
+            super(text);
+            setOpaque(false);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+            setFocusPainted(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int width = getWidth();
+            int height = getHeight();
+            if (getModel().isRollover()) {
+                g2.setColor(getBackground().brighter());
+            } else {
+                g2.setColor(getBackground());
+            }
+            g2.fillRoundRect(0, 0, width, height, 20, 20);
+            super.paintComponent(g);
+            g2.dispose();
+        }
+    }
+
     private void initComponents() {
         setLayout(new BorderLayout());
 
@@ -56,10 +86,11 @@ public class AdminDashboardUI extends JFrame {
         userPanel.setOpaque(false);
         JLabel userLabel = new JLabel("Admin | ");
         userLabel.setForeground(Color.WHITE);
-        JButton logoutButton = new JButton("Logout");
-        logoutButton.setBackground(new Color(244, 67, 54));
+        RoundedButton logoutButton = new RoundedButton("Logout");
+        logoutButton.setBackground(new Color(220, 20, 60)); // Crimson red for logout
         logoutButton.setForeground(Color.WHITE);
-        logoutButton.setFocusPainted(false);
+        logoutButton.setFont(new Font("Arial", Font.PLAIN, 14));
+        logoutButton.setPreferredSize(new Dimension(100, 30));
         logoutButton.addActionListener(e -> {
             dispose();
             new bankingsystemfinal.LoginUI(new bankingsystemfinal.Admin()).setVisible(true);
@@ -75,19 +106,36 @@ public class AdminDashboardUI extends JFrame {
         sidebarPanel.setPreferredSize(new Dimension(200, 0));
 
         String[] menuItems = {"Customer Details", "Transaction History", "Deposit Requests", "Loan Requests", "Transfer Requests", "Withdraw Requests", "Notifications"};
-        for (String menuItem : menuItems) {
-            JButton menuButton = new JButton("  " + menuItem);
+        Color[] buttonColors = {
+                new Color(30, 144, 255), // Dodger Blue
+                new Color(46, 204, 113), // Emerald Green
+                new Color(241, 196, 15), // Sunflower Yellow
+                new Color(231, 76, 60),  // Alizarin Red
+                new Color(155, 89, 182), // Amethyst Purple
+                new Color(52, 152, 219), // Peter River Blue
+                new Color(26, 188, 156)  // Turquoise
+        };
+
+        for (int i = 0; i < menuItems.length; i++) {
+            RoundedButton menuButton = new RoundedButton("  " + menuItems[i]);
+            final Color originalColor = buttonColors[i]; // Store the color as final
+            final String menuItem = menuItems[i]; // Store the menu item as final
             menuButton.setFont(new Font("Arial", Font.PLAIN, 16));
             menuButton.setForeground(Color.WHITE);
-            menuButton.setBackground(new Color(33, 33, 33));
+            menuButton.setBackground(originalColor);
             menuButton.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
             menuButton.setHorizontalAlignment(SwingConstants.LEFT);
-            menuButton.setFocusPainted(false);
+            menuButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
             menuButton.addMouseListener(new MouseAdapter() {
                 @Override
-                public void mouseEntered(MouseEvent e) { menuButton.setBackground(new Color(66, 66, 66)); }
+                public void mouseEntered(MouseEvent e) {
+                    menuButton.setBackground(menuButton.getBackground().brighter());
+                }
+
                 @Override
-                public void mouseExited(MouseEvent e) { menuButton.setBackground(new Color(33, 33, 33)); }
+                public void mouseExited(MouseEvent e) {
+                    menuButton.setBackground(originalColor); // Use the final variable
+                }
             });
             menuButton.addActionListener(e -> cardLayout.show(contentPanel, menuItem));
             sidebarPanel.add(menuButton);
@@ -106,7 +154,9 @@ public class AdminDashboardUI extends JFrame {
         customerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         DefaultTableModel customerModel = new DefaultTableModel(customerColumns, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return false; } // Disable editing for all columns
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
         };
         JTable customerTable = new JTable(customerModel);
         customerTable.setBackground(Color.WHITE);
@@ -124,7 +174,9 @@ public class AdminDashboardUI extends JFrame {
         String[] transactionColumns = {"Account ID From", "Account ID To", "Type", "Amount", "Timestamp", "Status"};
         DefaultTableModel transactionModel = new DefaultTableModel(transactionColumns, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return false; } // Disable editing for all columns
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
         };
         transactionTable = new JTable(transactionModel);
         transactionTable.setBackground(Color.WHITE);
@@ -133,11 +185,10 @@ public class AdminDashboardUI extends JFrame {
         JScrollPane transactionScroll = new JScrollPane(transactionTable);
         transactionPanel.add(transactionScroll, BorderLayout.CENTER);
 
-        // Add Export Button (Smaller Size)
-        JButton exportTransactionButton = new JButton("Export to PDF");
+        // Add Export Button
+        RoundedButton exportTransactionButton = new RoundedButton("Export to PDF");
         exportTransactionButton.setBackground(new Color(25, 118, 210));
         exportTransactionButton.setForeground(Color.WHITE);
-        exportTransactionButton.setFocusPainted(false);
         exportTransactionButton.setPreferredSize(new Dimension(120, 30));
         exportTransactionButton.addActionListener(e -> exportTransactionHistoryToPDF());
         transactionPanel.add(exportTransactionButton, BorderLayout.SOUTH);
@@ -152,7 +203,9 @@ public class AdminDashboardUI extends JFrame {
         String[] depositColumns = {"Account ID", "Amount", "Timestamp", "Status", "Action"};
         DefaultTableModel depositModel = new DefaultTableModel(depositColumns, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return column == 4; } // Only "Action" column is editable
+            public boolean isCellEditable(int row, int column) {
+                return column == 4;
+            }
         };
         depositTable = new JTable(depositModel);
         depositTable.setBackground(Color.WHITE);
@@ -172,7 +225,9 @@ public class AdminDashboardUI extends JFrame {
         String[] loanColumns = {"Account ID", "Amount", "Loan Type", "Applied Date", "Status", "Action"};
         DefaultTableModel loanModel = new DefaultTableModel(loanColumns, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return column == 5; } // Only "Action" column is editable
+            public boolean isCellEditable(int row, int column) {
+                return column == 5;
+            }
         };
         loanTable = new JTable(loanModel);
         loanTable.setBackground(Color.WHITE);
@@ -183,11 +238,10 @@ public class AdminDashboardUI extends JFrame {
         JScrollPane loanScroll = new JScrollPane(loanTable);
         loanPanel.add(loanScroll, BorderLayout.CENTER);
 
-        // Add Export Button for Loans (Smaller Size)
-        JButton exportLoanButton = new JButton("Export to PDF");
+        // Add Export Button for Loans
+        RoundedButton exportLoanButton = new RoundedButton("Export to PDF");
         exportLoanButton.setBackground(new Color(25, 118, 210));
         exportLoanButton.setForeground(Color.WHITE);
-        exportLoanButton.setFocusPainted(false);
         exportLoanButton.setPreferredSize(new Dimension(120, 30));
         exportLoanButton.addActionListener(e -> exportLoanRequestsToPDF());
         loanPanel.add(exportLoanButton, BorderLayout.SOUTH);
@@ -202,7 +256,9 @@ public class AdminDashboardUI extends JFrame {
         String[] transferColumns = {"Account ID From", "Account ID To", "Amount", "Timestamp", "Status", "Action"};
         DefaultTableModel transferModel = new DefaultTableModel(transferColumns, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return column == 5; } // Only "Action" column is editable
+            public boolean isCellEditable(int row, int column) {
+                return column == 5;
+            }
         };
         transferTable = new JTable(transferModel);
         transferTable.setBackground(Color.WHITE);
@@ -222,7 +278,9 @@ public class AdminDashboardUI extends JFrame {
         String[] withdrawColumns = {"Account ID", "Amount", "Timestamp", "Status", "Action"};
         DefaultTableModel withdrawModel = new DefaultTableModel(withdrawColumns, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return column == 4; } // Only "Action" column is editable
+            public boolean isCellEditable(int row, int column) {
+                return column == 4;
+            }
         };
         withdrawTable = new JTable(withdrawModel);
         withdrawTable.setBackground(Color.WHITE);
@@ -243,7 +301,9 @@ public class AdminDashboardUI extends JFrame {
         // Customer Selection Table
         DefaultTableModel customerModelForNotifications = new DefaultTableModel(customerColumns, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) { return false; } // Disable editing for all columns
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
         };
         JTable customerTableForNotifications = new JTable(customerModelForNotifications);
         customerTableForNotifications.setBackground(Color.WHITE);
@@ -258,10 +318,9 @@ public class AdminDashboardUI extends JFrame {
         messageArea.setLineWrap(true);
         messageArea.setWrapStyleWord(true);
         JScrollPane messageScroll = new JScrollPane(messageArea);
-        JButton sendButton = new JButton("Send Notification");
+        RoundedButton sendButton = new RoundedButton("Send Notification");
         sendButton.setBackground(new Color(25, 118, 210));
         sendButton.setForeground(Color.WHITE);
-        sendButton.setFocusPainted(false);
         sendButton.addActionListener(e -> {
             int selectedRow = customerTableForNotifications.getSelectedRow();
             if (selectedRow >= 0) {
@@ -459,10 +518,13 @@ public class AdminDashboardUI extends JFrame {
         }
     }
 
-    private class ButtonRenderer extends JButton implements TableCellRenderer {
-        public ButtonRenderer() { setOpaque(true); }
+    private class ButtonRenderer extends RoundedButton implements TableCellRenderer {
+        public ButtonRenderer() {
+            super("Action");
+        }
+
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-            setText((value == null) ? "" : value.toString());
+            setText((value == null) ? "Action" : value.toString());
             setBackground(new Color(25, 118, 210));
             setForeground(Color.WHITE);
             return this;
@@ -470,14 +532,13 @@ public class AdminDashboardUI extends JFrame {
     }
 
     private class DepositButtonEditor extends AbstractCellEditor implements TableCellEditor {
-        private JButton button;
+        private RoundedButton button;
         private JTable table;
-        private int adminId = 1; // Placeholder admin ID
+        private int adminId = 1;
 
         public DepositButtonEditor(JTable table) {
             this.table = table;
-            button = new JButton("Action");
-            button.setOpaque(true);
+            button = new RoundedButton("Action");
             button.setBackground(new Color(25, 118, 210));
             button.setForeground(Color.WHITE);
             button.addActionListener(e -> {
@@ -524,14 +585,13 @@ public class AdminDashboardUI extends JFrame {
     }
 
     private class LoanButtonEditor extends AbstractCellEditor implements TableCellEditor {
-        private JButton button;
+        private RoundedButton button;
         private JTable table;
-        private int adminId = 1; // Placeholder admin ID
+        private int adminId = 1;
 
         public LoanButtonEditor(JTable table) {
             this.table = table;
-            button = new JButton("Action");
-            button.setOpaque(true);
+            button = new RoundedButton("Action");
             button.setBackground(new Color(25, 118, 210));
             button.setForeground(Color.WHITE);
             button.addActionListener(e -> {
@@ -578,14 +638,13 @@ public class AdminDashboardUI extends JFrame {
     }
 
     private class TransferButtonEditor extends AbstractCellEditor implements TableCellEditor {
-        private JButton button;
+        private RoundedButton button;
         private JTable table;
-        private int adminId = 1; // Placeholder admin ID
+        private int adminId = 1;
 
         public TransferButtonEditor(JTable table) {
             this.table = table;
-            button = new JButton("Action");
-            button.setOpaque(true);
+            button = new RoundedButton("Action");
             button.setBackground(new Color(25, 118, 210));
             button.setForeground(Color.WHITE);
             button.addActionListener(e -> {
@@ -633,14 +692,13 @@ public class AdminDashboardUI extends JFrame {
     }
 
     private class WithdrawButtonEditor extends AbstractCellEditor implements TableCellEditor {
-        private JButton button;
+        private RoundedButton button;
         private JTable table;
-        private int adminId = 1; // Placeholder admin ID
+        private int adminId = 1;
 
         public WithdrawButtonEditor(JTable table) {
             this.table = table;
-            button = new JButton("Action");
-            button.setOpaque(true);
+            button = new RoundedButton("Action");
             button.setBackground(new Color(25, 118, 210));
             button.setForeground(Color.WHITE);
             button.addActionListener(e -> {
