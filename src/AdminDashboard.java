@@ -1,6 +1,8 @@
 package bankingsystemfinal;
 
 import java.sql.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,7 +47,7 @@ public class AdminDashboard {
 
     public static class TransactionRecord {
         private int accountIdFrom;
-        private int accountIdTo; // 0 if not applicable (e.g., for deposits, withdraws, regular transactions)
+        private int accountIdTo;
         private String type;
         private double amount;
         private String timestamp;
@@ -72,16 +74,31 @@ public class AdminDashboard {
         private int clientCount;
         private int activeLoans;
         private double monthlyRevenue;
+        private int monthlyDeposits;
+        private int monthlyTransfers;
+        private int monthlyWithdrawals;
+        private double totalIn;
+        private double totalOut;
 
-        public DashboardMetrics(int clientCount, int activeLoans, double monthlyRevenue) {
+        public DashboardMetrics(int clientCount, int activeLoans, double monthlyRevenue, int monthlyDeposits, int monthlyTransfers, int monthlyWithdrawals, double totalIn, double totalOut) {
             this.clientCount = clientCount;
             this.activeLoans = activeLoans;
             this.monthlyRevenue = monthlyRevenue;
+            this.monthlyDeposits = monthlyDeposits;
+            this.monthlyTransfers = monthlyTransfers;
+            this.monthlyWithdrawals = monthlyWithdrawals;
+            this.totalIn = totalIn;
+            this.totalOut = totalOut;
         }
 
         public int getClientCount() { return clientCount; }
         public int getActiveLoans() { return activeLoans; }
         public double getMonthlyRevenue() { return monthlyRevenue; }
+        public int getMonthlyDeposits() { return monthlyDeposits; }
+        public int getMonthlyTransfers() { return monthlyTransfers; }
+        public int getMonthlyWithdrawals() { return monthlyWithdrawals; }
+        public double getTotalIn() { return totalIn; }
+        public double getTotalOut() { return totalOut; }
     }
 
     public List<bankingsystemfinal.Customer.CustomerRecord> getCustomerDetails() {
@@ -635,7 +652,86 @@ public class AdminDashboard {
     }
 
     public DashboardMetrics getDashboardMetrics() {
-        return new DashboardMetrics(0, 0, 0.0);
+        Connection conn = bankingsystemfinal.DBConnection.getConnection();
+        if (conn == null) return new DashboardMetrics(0, 0, 0.0, 0, 0, 0, 0.0, 0.0);
+
+        int clientCount = 0;
+        int activeLoans = 0;
+        int monthlyDeposits = 0;
+        int monthlyTransfers = 0;
+        int monthlyWithdrawals = 0;
+        double totalIn = 0.0;
+        double totalOut = 0.0;
+        double monthlyRevenue = 0.0;
+
+        LocalDateTime now = LocalDateTime.now();
+        String monthStart = now.withDayOfMonth(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " 00:00:00";
+        String monthEnd = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " 23:59:59";
+
+        try {
+            // Client count
+            String clientSql = "SELECT COUNT(*) FROM customer";
+            PreparedStatement clientStmt = conn.prepareStatement(clientSql);
+            ResultSet clientRs = clientStmt.executeQuery();
+            if (clientRs.next()) {
+                clientCount = clientRs.getInt(1);
+            }
+            clientStmt.close();
+
+            // Active loans
+            String loanSql = "SELECT COUNT(*) FROM loans WHERE status = 'Approved'";
+            PreparedStatement loanStmt = conn.prepareStatement(loanSql);
+            ResultSet loanRs = loanStmt.executeQuery();
+            if (loanRs.next()) {
+                activeLoans = loanRs.getInt(1);
+            }
+            loanStmt.close();
+
+            // Monthly deposits
+            String depositSql = "SELECT COUNT(*), SUM(amount) FROM deposit_requests WHERE status = 'Approved' AND timestamp BETWEEN ? AND ?";
+            PreparedStatement depositStmt = conn.prepareStatement(depositSql);
+            depositStmt.setString(1, monthStart);
+            depositStmt.setString(2, monthEnd);
+            ResultSet depositRs = depositStmt.executeQuery();
+            if (depositRs.next()) {
+                monthlyDeposits = depositRs.getInt(1);
+                totalIn += depositRs.getDouble(2) != 0 ? depositRs.getDouble(2) : 0.0;
+            }
+            depositStmt.close();
+
+            // Monthly withdrawals
+            String withdrawSql = "SELECT COUNT(*), SUM(amount) FROM withdraw_requests WHERE status = 'Approved' AND timestamp BETWEEN ? AND ?";
+            PreparedStatement withdrawStmt = conn.prepareStatement(withdrawSql);
+            withdrawStmt.setString(1, monthStart);
+            withdrawStmt.setString(2, monthEnd);
+            ResultSet withdrawRs = withdrawStmt.executeQuery();
+            if (withdrawRs.next()) {
+                monthlyWithdrawals = withdrawRs.getInt(1);
+                totalOut += withdrawRs.getDouble(2) != 0 ? withdrawRs.getDouble(2) : 0.0;
+            }
+            withdrawStmt.close();
+
+            // Monthly transfers (count each transfer as one event, sum amounts for in/out)
+            String transferSql = "SELECT COUNT(*), SUM(amount) FROM transfers WHERE status = 'Approved' AND timestamp BETWEEN ? AND ?";
+            PreparedStatement transferStmt = conn.prepareStatement(transferSql);
+            transferStmt.setString(1, monthStart);
+            transferStmt.setString(2, monthEnd);
+            ResultSet transferRs = transferStmt.executeQuery();
+            if (transferRs.next()) {
+                monthlyTransfers = transferRs.getInt(1);
+                double transferAmount = transferRs.getDouble(2) != 0 ? transferRs.getDouble(2) : 0.0;
+                totalIn += transferAmount; // Money coming in to account_id_to
+                totalOut += transferAmount; // Money going out from account_id_from
+            }
+            transferStmt.close();
+
+        } catch (SQLException e) {
+            System.err.println("Error fetching dashboard metrics: " + e.getMessage());
+        } finally {
+            try { conn.close(); } catch (SQLException e) { System.err.println("Error closing connection: " + e.getMessage()); }
+        }
+
+        return new DashboardMetrics(clientCount, activeLoans, monthlyRevenue, monthlyDeposits, monthlyTransfers, monthlyWithdrawals, totalIn, totalOut);
     }
 
     public boolean deleteCustomerAccount(int customerId, int adminId) {
@@ -645,7 +741,6 @@ public class AdminDashboard {
         try {
             conn.setAutoCommit(false);
 
-            // First, delete related account records
             String deleteAccountSql = "DELETE FROM accounts WHERE customer_id = ?";
             PreparedStatement accountStmt = conn.prepareStatement(deleteAccountSql);
             accountStmt.setInt(1, customerId);
@@ -658,7 +753,6 @@ public class AdminDashboard {
                 return false;
             }
 
-            // Then, delete the customer record
             String deleteCustomerSql = "DELETE FROM customer WHERE customer_id = ?";
             PreparedStatement customerStmt = conn.prepareStatement(deleteCustomerSql);
             customerStmt.setInt(1, customerId);

@@ -22,6 +22,12 @@ import com.itextpdf.layout.element.Table;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.data.category.DefaultCategoryDataset;
+
 public class AdminDashboardUI extends JFrame {
     private bankingsystemfinal.AdminDashboard adminDashboard;
     private JPanel contentPanel;
@@ -104,8 +110,9 @@ public class AdminDashboardUI extends JFrame {
         sidebarPanel.setBackground(new Color(33, 33, 33));
         sidebarPanel.setPreferredSize(new Dimension(200, 0));
 
-        String[] menuItems = {"Customer Details", "Transaction History", "Deposit Requests", "Loan Requests", "Transfer Requests", "Withdraw Requests", "Notifications"};
+        String[] menuItems = {"Customer Details", "Transaction History", "Deposit Requests", "Loan Requests", "Transfer Requests", "Withdraw Requests", "Notifications", "Graph"};
         Color[] buttonColors = {
+                new Color(26, 188, 156),
                 new Color(26, 188, 156),
                 new Color(26, 188, 156),
                 new Color(26, 188, 156),
@@ -164,9 +171,8 @@ public class AdminDashboardUI extends JFrame {
         JScrollPane customerScroll = new JScrollPane(customerTable);
         customerPanel.add(customerScroll, BorderLayout.CENTER);
 
-        // Add Delete Account Button
         RoundedButton deleteButton = new RoundedButton("Delete Account");
-        deleteButton.setBackground(new Color(220, 20, 60)); // Red for deletion
+        deleteButton.setBackground(new Color(220, 20, 60));
         deleteButton.setForeground(Color.WHITE);
         deleteButton.setPreferredSize(new Dimension(120, 30));
         deleteButton.addActionListener(e -> {
@@ -179,7 +185,7 @@ public class AdminDashboardUI extends JFrame {
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.WARNING_MESSAGE);
                 if (confirm == JOptionPane.YES_OPTION) {
-                    if (adminDashboard.deleteCustomerAccount(customerId, 1)) { // Assuming adminId = 1
+                    if (adminDashboard.deleteCustomerAccount(customerId, 1)) {
                         JOptionPane.showMessageDialog(customerPanel, "Customer and account deleted successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
                         updateCustomerTable(customerTable);
                     } else {
@@ -372,6 +378,82 @@ public class AdminDashboardUI extends JFrame {
         notificationsPanel.add(customerScrollForNotifications, BorderLayout.CENTER);
         notificationsPanel.add(inputPanel, BorderLayout.SOUTH);
         contentPanel.add(notificationsPanel, "Notifications");
+
+        // Graph Panel
+        JPanel graphPanel = new JPanel(new GridLayout(2, 2, 10, 10));
+        graphPanel.setBackground(new Color(245, 245, 245));
+        graphPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        AdminDashboard.DashboardMetrics metrics = adminDashboard.getDashboardMetrics();
+
+        // Graph 1: Customer Count
+        DefaultCategoryDataset customerDataset = new DefaultCategoryDataset();
+        customerDataset.addValue(metrics.getClientCount(), "Count", "Customers");
+        JFreeChart customerChart = ChartFactory.createBarChart(
+                "Total Customers",
+                "",
+                "Number of Customers",
+                customerDataset,
+                PlotOrientation.VERTICAL,
+                false,
+                true,
+                false
+        );
+        ChartPanel customerChartPanel = new ChartPanel(customerChart);
+        graphPanel.add(customerChartPanel);
+
+        // Graph 2: Active Loans
+        DefaultCategoryDataset loanDataset = new DefaultCategoryDataset();
+        loanDataset.addValue(metrics.getActiveLoans(), "Count", "Active Loans");
+        JFreeChart loanChart = ChartFactory.createBarChart(
+                "Active Loans",
+                "",
+                "Number of Loans",
+                loanDataset,
+                PlotOrientation.VERTICAL,
+                false,
+                true,
+                false
+        );
+        ChartPanel loanChartPanel = new ChartPanel(loanChart);
+        graphPanel.add(loanChartPanel);
+
+        // Graph 3: Monthly Transactions (Deposits, Transfers, Withdrawals)
+        DefaultCategoryDataset transactionDataset = new DefaultCategoryDataset();
+        transactionDataset.addValue(metrics.getMonthlyDeposits(), "Count", "Deposits");
+        transactionDataset.addValue(metrics.getMonthlyTransfers(), "Count", "Transfers");
+        transactionDataset.addValue(metrics.getMonthlyWithdrawals(), "Count", "Withdrawals");
+        JFreeChart transactionChart = ChartFactory.createBarChart(
+                "Monthly Transactions",
+                "Transaction Type",
+                "Number of Transactions",
+                transactionDataset,
+                PlotOrientation.VERTICAL,
+                false,
+                true,
+                false
+        );
+        ChartPanel transactionChartPanel = new ChartPanel(transactionChart);
+        graphPanel.add(transactionChartPanel);
+
+        // Graph 4: Total In and Out
+        DefaultCategoryDataset cashFlowDataset = new DefaultCategoryDataset();
+        cashFlowDataset.addValue(metrics.getTotalIn(), "Amount", "Total In");
+        cashFlowDataset.addValue(metrics.getTotalOut(), "Amount", "Total Out");
+        JFreeChart cashFlowChart = ChartFactory.createBarChart(
+                "Monthly Cash Flow",
+                "",
+                "Amount",
+                cashFlowDataset,
+                PlotOrientation.VERTICAL,
+                false,
+                true,
+                false
+        );
+        ChartPanel cashFlowChartPanel = new ChartPanel(cashFlowChart);
+        graphPanel.add(cashFlowChartPanel);
+
+        contentPanel.add(graphPanel, "Graph");
 
         add(headerPanel, BorderLayout.NORTH);
         add(sidebarPanel, BorderLayout.WEST);
