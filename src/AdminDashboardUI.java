@@ -74,7 +74,7 @@ public class AdminDashboardUI extends JFrame {
 
         // Header
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(new Color(25, 118, 210));
+        headerPanel.setBackground(new Color(26, 188, 156));
         headerPanel.setPreferredSize(new Dimension(0, 60));
         JLabel headerLabel = new JLabel("FutureBank Admin");
         headerLabel.setFont(new Font("Arial", Font.BOLD, 24));
@@ -107,12 +107,12 @@ public class AdminDashboardUI extends JFrame {
 
         String[] menuItems = {"Customer Details", "Transaction History", "Deposit Requests", "Loan Requests", "Transfer Requests", "Withdraw Requests", "Notifications"};
         Color[] buttonColors = {
-                new Color(30, 144, 255), // Dodger Blue
-                new Color(46, 204, 113), // Emerald Green
-                new Color(241, 196, 15), // Sunflower Yellow
-                new Color(231, 76, 60),  // Alizarin Red
-                new Color(155, 89, 182), // Amethyst Purple
-                new Color(52, 152, 219), // Peter River Blue
+                new Color(26, 188, 156),
+                new Color(26, 188, 156),
+                new Color(26, 188, 156),
+                new Color(26, 188, 156),
+                new Color(26, 188, 156),
+                new Color(26, 188, 156),
                 new Color(26, 188, 156)  // Turquoise
         };
 

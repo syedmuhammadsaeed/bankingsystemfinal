@@ -84,12 +84,12 @@ public class CustomerDashboardUI extends JFrame {
 
         String[] tabs = {"Accounts", "Transactions", "Deposit Request", "Loan Request", "Transfer", "Withdraw Request", "Notifications"};
         Color[] buttonColors = {
-                new Color(30, 144, 255), // Dodger Blue
-                new Color(46, 204, 113), // Emerald Green
-                new Color(241, 196, 15), // Sunflower Yellow
-                new Color(231, 76, 60),  // Alizarin Red
-                new Color(155, 89, 182), // Amethyst Purple
-                new Color(52, 152, 219), // Peter River Blue
+                new Color(26, 188, 156),
+                new Color(26, 188, 156),
+                new Color(26, 188, 156),
+                new Color(26, 188, 156),
+                new Color(26, 188, 156),
+                new Color(26, 188, 156),
                 new Color(26, 188, 156)  // Turquoise
         };
 
