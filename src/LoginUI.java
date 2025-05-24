@@ -394,7 +394,7 @@ public class LoginUI extends JFrame {
                     dispose();
                 }
             } else {
-                showErrorAnimation();
+
                 JOptionPane.showMessageDialog(this, "Invalid email or password", "Authentication Failed", JOptionPane.ERROR_MESSAGE);
             }
         } else if (adminRadio.isSelected()) {
@@ -406,37 +406,13 @@ public class LoginUI extends JFrame {
                     dispose();
                 }
             } else {
-                showErrorAnimation();
+
                 JOptionPane.showMessageDialog(this, "Invalid email or password", "Authentication Failed", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
-    private void showErrorAnimation() {
-        // Create a shaking animation for invalid login
-        Timer timer = new Timer(10, null);
-        final int[] x = {getX()};
-        final int offset = 10;
-        final int[] direction = {1};
-        final int[] shakes = {0};
 
-        timer.addActionListener(e -> {
-            x[0] += 5 * direction[0];
-            setLocation(x[0], getY());
-
-            if (Math.abs(x[0] - getX()) >= offset) {
-                direction[0] *= -1;
-                shakes[0]++;
-            }
-
-            if (shakes[0] >= 6) {
-                timer.stop();
-                setLocation(x[0], getY());
-            }
-        });
-
-        timer.start();
-    }
 
     private void showRegistrationDialog() {
         JDialog registerDialog = new JDialog(this, "Register", true);
