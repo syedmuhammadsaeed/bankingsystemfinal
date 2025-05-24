@@ -110,7 +110,7 @@ public class AdminDashboardUI extends JFrame {
         sidebarPanel.setBackground(new Color(33, 33, 33));
         sidebarPanel.setPreferredSize(new Dimension(200, 0));
 
-        String[] menuItems = {"Customer Details", "Transaction History", "Deposit Requests", "Loan Requests", "Transfer Requests", "Withdraw Requests", "Notifications", "Graph"};
+        String[] menuItems = {"Customer Details", "Transaction History", "Deposit Requests", "Loan Requests", "Transfer Requests", "Withdraw Requests", "Notifications", "Report"};
         Color[] buttonColors = {
                 new Color(26, 188, 156),
                 new Color(26, 188, 156),
@@ -379,10 +379,10 @@ public class AdminDashboardUI extends JFrame {
         notificationsPanel.add(inputPanel, BorderLayout.SOUTH);
         contentPanel.add(notificationsPanel, "Notifications");
 
-        // Graph Panel
-        JPanel graphPanel = new JPanel(new GridLayout(2, 2, 10, 10));
-        graphPanel.setBackground(new Color(245, 245, 245));
-        graphPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        // Report Panel
+        JPanel reportPanel = new JPanel(new GridLayout(2, 2, 10, 10));
+        reportPanel.setBackground(new Color(245, 245, 245));
+        reportPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         AdminDashboard.DashboardMetrics metrics = adminDashboard.getDashboardMetrics();
 
@@ -400,7 +400,7 @@ public class AdminDashboardUI extends JFrame {
                 false
         );
         ChartPanel customerChartPanel = new ChartPanel(customerChart);
-        graphPanel.add(customerChartPanel);
+        reportPanel.add(customerChartPanel);
 
         // Graph 2: Active Loans
         DefaultCategoryDataset loanDataset = new DefaultCategoryDataset();
@@ -416,7 +416,7 @@ public class AdminDashboardUI extends JFrame {
                 false
         );
         ChartPanel loanChartPanel = new ChartPanel(loanChart);
-        graphPanel.add(loanChartPanel);
+        reportPanel.add(loanChartPanel);
 
         // Graph 3: Monthly Transactions (Deposits, Transfers, Withdrawals)
         DefaultCategoryDataset transactionDataset = new DefaultCategoryDataset();
@@ -434,7 +434,7 @@ public class AdminDashboardUI extends JFrame {
                 false
         );
         ChartPanel transactionChartPanel = new ChartPanel(transactionChart);
-        graphPanel.add(transactionChartPanel);
+        reportPanel.add(transactionChartPanel);
 
         // Graph 4: Total In and Out
         DefaultCategoryDataset cashFlowDataset = new DefaultCategoryDataset();
@@ -451,9 +451,9 @@ public class AdminDashboardUI extends JFrame {
                 false
         );
         ChartPanel cashFlowChartPanel = new ChartPanel(cashFlowChart);
-        graphPanel.add(cashFlowChartPanel);
+        reportPanel.add(cashFlowChartPanel);
 
-        contentPanel.add(graphPanel, "Graph");
+        contentPanel.add(reportPanel, "Report");
 
         add(headerPanel, BorderLayout.NORTH);
         add(sidebarPanel, BorderLayout.WEST);
@@ -525,7 +525,7 @@ public class AdminDashboardUI extends JFrame {
             model.addRow(new Object[]{
                     transfer.getAccountIdFrom(),
                     transfer.getAccountIdTo(),
-                    String.format("%.2f", transfer.getAmount()),
+                    String.format("%.2f", transfer.getAmount()), // Fixed: Changed 'loan' to 'transfer'
                     transfer.getTimestamp(),
                     transfer.getStatus(),
                     "Action"
