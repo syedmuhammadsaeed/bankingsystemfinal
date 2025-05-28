@@ -208,7 +208,7 @@ public class AdminDashboard {
         if (conn == null) return requests;
 
         try {
-            String sql = "SELECT * FROM deposit_requests";
+            String sql = "SELECT * FROM deposit_requests WHERE status = 'Pending'";
             PreparedStatement stmt = conn.prepareStatement(sql);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
@@ -234,7 +234,7 @@ public class AdminDashboard {
         if (conn == null) return requests;
 
         try {
-            String sql = "SELECT * FROM withdraw_requests";
+            String sql = "SELECT * FROM withdraw_requests WHERE status = 'Pending'";
             PreparedStatement stmt = conn.prepareStatement(sql);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
@@ -255,8 +255,37 @@ public class AdminDashboard {
     }
 
     public List<bankingsystemfinal.Loan.LoanRecord> getLoanRequests() {
-        bankingsystemfinal.Loan loan = new bankingsystemfinal.Loan();
-        return loan.getLoans();
+        List<bankingsystemfinal.Loan.LoanRecord> loans = new ArrayList<>();
+        Connection conn = bankingsystemfinal.DBConnection.getConnection();
+        if (conn == null) {
+            System.err.println("Failed to get database connection for loan requests.");
+            return loans;
+        }
+
+        try {
+            String sql = "SELECT * FROM loans WHERE status = 'Pending'";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery();
+            System.out.println("Fetching pending loan requests...");
+            int count = 0;
+            while (rs.next()) {
+                loans.add(new bankingsystemfinal.Loan.LoanRecord(
+                        rs.getInt("account_id"),
+                        rs.getDouble("amount"),
+                        rs.getString("loan_type"),
+                        rs.getString("applied_date"),
+                        rs.getString("status")
+                ));
+                count++;
+            }
+            System.out.println("Fetched " + count + " pending loan request(s).");
+            stmt.close();
+        } catch (SQLException e) {
+            System.err.println("Error fetching loan requests: SQLState=" + e.getSQLState() + ", Message=" + e.getMessage());
+        } finally {
+            try { conn.close(); } catch (SQLException e) { System.err.println("Error closing connection: " + e.getMessage()); }
+        }
+        return loans;
     }
 
     public List<bankingsystemfinal.Transfer> getTransferRequests() {
@@ -265,7 +294,7 @@ public class AdminDashboard {
         if (conn == null) return transfers;
 
         try {
-            String sql = "SELECT * FROM transfers";
+            String sql = "SELECT * FROM transfers WHERE status = 'Pending'";
             PreparedStatement stmt = conn.prepareStatement(sql);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
@@ -461,25 +490,26 @@ public class AdminDashboard {
         }
     }
 
-    public boolean approveLoan(int accountId, double amount, int adminId) {
+    public boolean approveLoan(int accountId, double amount, String appliedDate, int adminId) {
         Connection conn = bankingsystemfinal.DBConnection.getConnection();
         if (conn == null) return false;
 
         try {
             conn.setAutoCommit(false);
 
-            String updateLoanSql = "UPDATE loans SET status = ?, admin_id = ? WHERE account_id = ? AND amount = ? AND status = 'Pending'";
+            String updateLoanSql = "UPDATE loans SET status = ?, admin_id = ? WHERE account_id = ? AND amount = ? AND applied_date = ? AND status = 'Pending'";
             PreparedStatement loanStmt = conn.prepareStatement(updateLoanSql);
             loanStmt.setString(1, "Approved");
             loanStmt.setInt(2, adminId);
             loanStmt.setInt(3, accountId);
             loanStmt.setDouble(4, amount);
+            loanStmt.setString(5, appliedDate);
             int loanRowsAffected = loanStmt.executeUpdate();
             loanStmt.close();
 
             if (loanRowsAffected == 0) {
                 conn.rollback();
-                System.err.println("No pending loan request found for account_id: " + accountId + " and amount: " + amount);
+                System.err.println("No pending loan request found for account_id: " + accountId + ", amount: " + amount + ", applied_date: " + appliedDate);
                 return false;
             }
 
@@ -517,16 +547,17 @@ public class AdminDashboard {
         }
     }
 
-    public boolean rejectLoan(int accountId, double amount, int adminId) {
+    public boolean rejectLoan(int accountId, double amount, String appliedDate, int adminId) {
         Connection conn = bankingsystemfinal.DBConnection.getConnection();
         if (conn == null) return false;
 
         try {
-            String sql = "UPDATE loans SET status = 'Rejected', admin_id = ? WHERE account_id = ? AND amount = ? AND status = 'Pending'";
+            String sql = "UPDATE loans SET status = 'Rejected', admin_id = ? WHERE account_id = ? AND amount = ? AND applied_date = ? AND status = 'Pending'";
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setInt(1, adminId);
             stmt.setInt(2, accountId);
             stmt.setDouble(3, amount);
+            stmt.setString(4, appliedDate);
             int rowsAffected = stmt.executeUpdate();
             stmt.close();
             return rowsAffected > 0;
@@ -711,7 +742,7 @@ public class AdminDashboard {
             }
             withdrawStmt.close();
 
-            // Monthly transfers (count each transfer as one event, sum amounts for in/out)
+            // Monthly transfers
             String transferSql = "SELECT COUNT(*), SUM(amount) FROM transfers WHERE status = 'Approved' AND timestamp BETWEEN ? AND ?";
             PreparedStatement transferStmt = conn.prepareStatement(transferSql);
             transferStmt.setString(1, monthStart);
@@ -720,8 +751,8 @@ public class AdminDashboard {
             if (transferRs.next()) {
                 monthlyTransfers = transferRs.getInt(1);
                 double transferAmount = transferRs.getDouble(2) != 0 ? transferRs.getDouble(2) : 0.0;
-                totalIn += transferAmount; // Money coming in to account_id_to
-                totalOut += transferAmount; // Money going out from account_id_from
+                totalIn += transferAmount;
+                totalOut += transferAmount;
             }
             transferStmt.close();
 

@@ -9,7 +9,6 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
@@ -24,7 +23,6 @@ import java.io.IOException;
 public class CustomerDashboardUI extends JFrame {
     private CustomerDashboard dashboard;
     private int customerId;
-    private JTextField accountIdField;
     private JTextField amountField;
     private JTextField accountIdToField;
     private JTable accountsTable;
@@ -46,7 +44,6 @@ public class CustomerDashboardUI extends JFrame {
         initComponents();
     }
 
-    // Custom JButton class for rounded corners
     private class RoundedButton extends JButton {
         public RoundedButton(String text) {
             super(text);
@@ -90,7 +87,7 @@ public class CustomerDashboardUI extends JFrame {
                 new Color(26, 188, 156),
                 new Color(26, 188, 156),
                 new Color(26, 188, 156),
-                new Color(26, 188, 156)  // Turquoise
+                new Color(26, 188, 156)
         };
 
         for (int i = 0; i < tabs.length; i++) {
@@ -120,7 +117,7 @@ public class CustomerDashboardUI extends JFrame {
         }
 
         RoundedButton logoutButton = new RoundedButton("Logout");
-        logoutButton.setBackground(new Color(220, 20, 60)); // Crimson red
+        logoutButton.setBackground(new Color(220, 20, 60));
         logoutButton.setForeground(Color.WHITE);
         logoutButton.setFont(new Font("Arial", Font.PLAIN, 16));
         logoutButton.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -135,11 +132,7 @@ public class CustomerDashboardUI extends JFrame {
 
         // Main Content
         JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        // Center Table
-        String[] initialColumns = {"Account ID", "Account Type", "Balance", "Status"};
-        tableModel = new DefaultTableModel(initialColumns, 0) {
+        tableModel = new DefaultTableModel(new String[]{"Account ID", "Account Type", "Balance", "Status"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -159,8 +152,7 @@ public class CustomerDashboardUI extends JFrame {
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        JLabel accountIdLabel = new JLabel("Account ID:");
-        accountIdField = new JTextField(10);
+        // Amount input
         JLabel amountLabel = new JLabel("Amount:");
         amountField = new JTextField(10);
         accountIdToLabel = new JLabel("Account ID To:");
@@ -174,18 +166,12 @@ public class CustomerDashboardUI extends JFrame {
 
         gbc.gridx = 0;
         gbc.gridy = 0;
-        bottomPanel.add(accountIdLabel, gbc);
-        gbc.gridx = 1;
-        bottomPanel.add(accountIdField, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 1;
         bottomPanel.add(amountLabel, gbc);
         gbc.gridx = 1;
         bottomPanel.add(amountField, gbc);
 
         gbc.gridx = 0;
-        gbc.gridy = 2;
+        gbc.gridy = 1;
         bottomPanel.add(accountIdToLabel, gbc);
         gbc.gridx = 1;
         bottomPanel.add(accountIdToField, gbc);
@@ -193,7 +179,7 @@ public class CustomerDashboardUI extends JFrame {
         accountIdToField.setVisible(false);
 
         gbc.gridx = 0;
-        gbc.gridy = 3;
+        gbc.gridy = 2;
         gbc.gridwidth = 1;
         bottomPanel.add(actionButton, gbc);
         gbc.gridx = 1;
@@ -226,55 +212,85 @@ public class CustomerDashboardUI extends JFrame {
         // Action Listeners
         actionButton.addActionListener(e -> {
             try {
-                int accountId = Integer.parseInt(accountIdField.getText());
-                double amount = Double.parseDouble(amountField.getText());
+                // Validate amount field
+                if (amountField.getText().trim().isEmpty()) {
+                    JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Amount field cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                double amount = Double.parseDouble(amountField.getText().trim());
+                if (amount <= 0) {
+                    JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Amount must be positive.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                // Get first account automatically
+                List<Account> accounts = dashboard.getAccounts();
+                if (accounts.isEmpty()) {
+                    JOptionPane.showMessageDialog(CustomerDashboardUI.this, "No accounts available. Please create an account first.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                int accountId = accounts.get(0).getAccountId();
+
                 if ("Deposit Request".equals(currentTab)) {
                     if (dashboard.deposit(accountId, amount)) {
                         JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Deposit request successful!");
                         updateTableForTab(currentTab);
                     } else {
-                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error depositing money: Account not found or does not belong to this customer.", "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error depositing money: Database error or invalid account.", "Error", JOptionPane.ERROR_MESSAGE);
                     }
                 } else if ("Loan Request".equals(currentTab)) {
                     if (dashboard.requestLoan(accountId, amount)) {
                         JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Loan request successful!");
                         updateTableForTab(currentTab);
                     } else {
-                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error requesting loan: Account not found or does not belong to this customer.", "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error requesting loan: Database error or invalid account.", "Error", JOptionPane.ERROR_MESSAGE);
                     }
                 } else if ("Transfer".equals(currentTab)) {
-                    int accountIdTo = Integer.parseInt(accountIdToField.getText());
+                    if (accountIdToField.getText().trim().isEmpty()) {
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Account ID To field cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                    int accountIdTo = Integer.parseInt(accountIdToField.getText().trim());
+                    if (accountId == accountIdTo) {
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Cannot transfer to the same account.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
                     if (dashboard.transfer(accountId, accountIdTo, amount)) {
                         JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Transfer request successful!");
                         updateTableForTab(currentTab);
                     } else {
-                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error transferring money: Invalid accounts or insufficient balance.", "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error transferring money: Invalid accounts or database error.", "Error", JOptionPane.ERROR_MESSAGE);
                     }
                 } else if ("Withdraw Request".equals(currentTab)) {
                     if (dashboard.withdraw(accountId, amount)) {
                         JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Withdraw request successful!");
                         updateTableForTab(currentTab);
                     } else {
-                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error requesting withdraw: Account not found or does not belong to this customer.", "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error requesting withdraw: Database error or invalid account.", "Error", JOptionPane.ERROR_MESSAGE);
                     }
                 }
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Invalid input. All fields must be numeric.", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Invalid input: Amount and Account ID To (if applicable) must be numeric.", "Error", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(CustomerDashboardUI.this, "Error processing request: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
-        refreshButton.addActionListener(e -> updateTableForTab(currentTab));
+        refreshButton.addActionListener(e -> {
+            updateTableForTab(currentTab);
+        });
 
         add(sidebarPanel, BorderLayout.WEST);
         add(mainPanel, BorderLayout.CENTER);
-        updateTableForTab("Accounts"); // Initial data load for Accounts tab
+        updateTableForTab("Accounts");
     }
 
     private void updateTableForTab(String tab) {
-        tableModel.setRowCount(0); // Clear existing rows
-        bottomPanel.setVisible(true); // Show bottom panel by default
-        transactionPanel.setVisible(false); // Hide transaction panel by default
-        loanPanel.setVisible(false); // Hide loan panel by default
+        currentTab = tab;
+        tableModel.setRowCount(0);
+        bottomPanel.setVisible(true);
+        transactionPanel.setVisible(false);
+        loanPanel.setVisible(false);
 
         switch (tab) {
             case "Accounts":
@@ -282,13 +298,13 @@ public class CustomerDashboardUI extends JFrame {
                 List<Account> accounts = dashboard.getAccounts();
                 for (Account account : accounts) {
                     tableModel.addRow(new Object[]{
-                            account.getAccountId(),
+                            "****" + String.format("%04d", account.getAccountId() % 10000),
                             account.getAccountType(),
-                            account.getBalance(),
+                            String.format("%.2f", account.getBalance()),
                             "Active"
                     });
                 }
-                bottomPanel.setVisible(false); // Hide bottom panel for Accounts
+                bottomPanel.setVisible(false);
                 break;
 
             case "Transactions":
@@ -296,16 +312,16 @@ public class CustomerDashboardUI extends JFrame {
                 List<CustomerDashboard.TransactionRecord> transactions = dashboard.getTransactions();
                 for (CustomerDashboard.TransactionRecord transaction : transactions) {
                     tableModel.addRow(new Object[]{
-                            transaction.getAccountIdFrom(),
-                            transaction.getAccountIdTo() == 0 ? "-" : transaction.getAccountIdTo(),
+                            "****" + String.format("%04d", transaction.getAccountIdFrom() % 10000),
+                            transaction.getAccountIdTo() == 0 ? "-" : "****" + String.format("%04d", transaction.getAccountIdTo() % 10000),
                             transaction.getType(),
-                            transaction.getAmount(),
+                            String.format("%.2f", transaction.getAmount()),
                             transaction.getTimestamp(),
                             transaction.getStatus()
                     });
                 }
-                bottomPanel.setVisible(false); // Hide bottom panel for Transactions
-                transactionPanel.setVisible(true); // Show export button for Transactions
+                bottomPanel.setVisible(false);
+                transactionPanel.setVisible(true);
                 break;
 
             case "Deposit Request":
@@ -313,8 +329,8 @@ public class CustomerDashboardUI extends JFrame {
                 List<AdminDashboard.DepositRequest> depositRequests = dashboard.getDepositRequests();
                 for (AdminDashboard.DepositRequest request : depositRequests) {
                     tableModel.addRow(new Object[]{
-                            request.getAccountId(),
-                            request.getAmount(),
+                            "****" + String.format("%04d", request.getAccountId() % 10000),
+                            String.format("%.2f", request.getAmount()),
                             request.getTimestamp(),
                             request.getStatus()
                     });
@@ -329,8 +345,8 @@ public class CustomerDashboardUI extends JFrame {
                 List<Loan.LoanRecord> loanRequests = dashboard.getLoanRequests();
                 for (Loan.LoanRecord loan : loanRequests) {
                     tableModel.addRow(new Object[]{
-                            loan.getAccountId(),
-                            loan.getAmount(),
+                            "****" + String.format("%04d", loan.getAccountId() % 10000),
+                            String.format("%.2f", loan.getAmount()),
                             loan.getLoanType(),
                             loan.getAppliedDate(),
                             loan.getStatus()
@@ -339,7 +355,7 @@ public class CustomerDashboardUI extends JFrame {
                 accountIdToLabel.setVisible(false);
                 accountIdToField.setVisible(false);
                 actionButton.setText("Request Loan");
-                loanPanel.setVisible(true); // Show export button for Loan Request
+                loanPanel.setVisible(true);
                 break;
 
             case "Transfer":
@@ -347,9 +363,9 @@ public class CustomerDashboardUI extends JFrame {
                 List<Transfer> transfers = dashboard.getTransfers();
                 for (Transfer transfer : transfers) {
                     tableModel.addRow(new Object[]{
-                            transfer.getAccountIdFrom(),
-                            transfer.getAccountIdTo(),
-                            transfer.getAmount(),
+                            "****" + String.format("%04d", transfer.getAccountIdFrom() % 10000),
+                            "****" + String.format("%04d", transfer.getAccountIdTo() % 10000),
+                            String.format("%.2f", transfer.getAmount()),
                             transfer.getTimestamp(),
                             transfer.getStatus()
                     });
@@ -364,8 +380,8 @@ public class CustomerDashboardUI extends JFrame {
                 List<AdminDashboard.WithdrawRequest> withdrawRequests = dashboard.getWithdrawRequests();
                 for (AdminDashboard.WithdrawRequest request : withdrawRequests) {
                     tableModel.addRow(new Object[]{
-                            request.getAccountId(),
-                            request.getAmount(),
+                            "****" + String.format("%04d", request.getAccountId() % 10000),
+                            String.format("%.2f", request.getAmount()),
                             request.getTimestamp(),
                             request.getStatus()
                     });
@@ -385,7 +401,7 @@ public class CustomerDashboardUI extends JFrame {
                             notification.getTimestamp()
                     });
                 }
-                bottomPanel.setVisible(false); // Hide bottom panel for Notifications
+                bottomPanel.setVisible(false);
                 break;
         }
     }
@@ -413,10 +429,10 @@ public class CustomerDashboardUI extends JFrame {
                 table.addCell("Status");
 
                 for (CustomerDashboard.TransactionRecord transaction : dashboard.getTransactions()) {
-                    table.addCell(String.valueOf(transaction.getAccountIdFrom()));
-                    table.addCell(transaction.getAccountIdTo() == 0 ? "-" : String.valueOf(transaction.getAccountIdTo()));
+                    table.addCell("****" + String.format("%04d", transaction.getAccountIdFrom() % 10000));
+                    table.addCell(transaction.getAccountIdTo() == 0 ? "-" : "****" + String.format("%04d", transaction.getAccountIdTo() % 10000));
                     table.addCell(transaction.getType());
-                    table.addCell(String.valueOf(transaction.getAmount()));
+                    table.addCell(String.format("%.2f", transaction.getAmount()));
                     table.addCell(transaction.getTimestamp());
                     table.addCell(transaction.getStatus());
                 }
@@ -451,7 +467,7 @@ public class CustomerDashboardUI extends JFrame {
                 table.addCell("Status");
 
                 for (Loan.LoanRecord loan : dashboard.getLoanRequests()) {
-                    table.addCell(String.valueOf(loan.getAccountId()));
+                    table.addCell("****" + String.format("%04d", loan.getAccountId() % 10000));
                     table.addCell(String.format("%.2f", loan.getAmount()));
                     table.addCell(loan.getLoanType());
                     table.addCell(loan.getAppliedDate());
@@ -467,6 +483,6 @@ public class CustomerDashboardUI extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new CustomerDashboardUI(new CustomerDashboard(1)).setVisible(true)); // Replace 1 with actual customerId
+        SwingUtilities.invokeLater(() -> new CustomerDashboardUI(new CustomerDashboard(1)).setVisible(true));
     }
 }

@@ -1,4 +1,4 @@
-package bankingsystemfinal; // Adjust package if different
+package bankingsystemfinal;
 
 public class Account {
     private int accountId;

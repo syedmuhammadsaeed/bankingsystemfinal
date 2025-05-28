@@ -93,10 +93,10 @@ public class Admin {
         }
         return customers;
     }
-
+    // Placeholder implementation
     public List<bankingsystemfinal.TransactionHistory.TransactionRecord> getTransactionHistory() {
         bankingsystemfinal.TransactionHistory history = new bankingsystemfinal.TransactionHistory();
-        return history.getTransactions(); // Placeholder implementation
+        return history.getTransactions();
     }
 
     public List<bankingsystemfinal.AdminDashboard.DepositRequest> getDepositRequests() {
